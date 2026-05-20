@@ -7,15 +7,13 @@ maintained as a prerequisite guardrail but is never shown in prompts.
 """
 
 import json
-from pathlib import Path
 
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from evalconvolearn import EvalConvoLearn, FlexLearner
+from evalconvolearn import FlexLearner
 from evalconvolearn.models.practice_item import PracticeItem
 from evalconvolearn.models.skill import Skill
-from evalconvolearn.models.tutor import Tutor
 
 
 class ConversationHistoryLearner(FlexLearner):
@@ -36,7 +34,9 @@ class ConversationHistoryLearner(FlexLearner):
     def get_knowledge_description(self) -> str:
         if not self.knowledge_items:
             return "You have no prior knowledge yet."
-        return "What you have learned so far:\n" + "\n".join(f"- {item}" for item in self.knowledge_items)
+        return "What you have learned so far:\n" + "\n".join(
+            f"- {item}" for item in self.knowledge_items
+        )
 
     def get_knowledge_for_problem(
         self,
@@ -54,7 +54,9 @@ class ConversationHistoryLearner(FlexLearner):
     ) -> str:
         knowledge = self.get_knowledge_description()
         associated_skills = (
-            "\n".join(f"- {skill.id}: {skill.description}" for skill in practice_item_skills)
+            "\n".join(
+                f"- {skill.id}: {skill.description}" for skill in practice_item_skills
+            )
             if practice_item_skills
             else "None provided"
         )
@@ -110,12 +112,19 @@ class ConversationHistoryLearner(FlexLearner):
         elif self.mastered_skills and not self.knowledge_items:
             for sk_id in self.mastered_skills:
                 skill = self.skill_space[sk_id]
-                self.knowledge_items.append(f"Foundational concept: {skill.description}")
+                self.knowledge_items.append(
+                    f"Foundational concept: {skill.description}",
+                )
 
     # ── Core learner methods ─────────────────────────────────────────── #
 
     def save_practice_conversation(self, conversation_record: dict) -> None:
-        required_keys = {"session_id", "practice_item_text", "item_skills", "dialogue_history"}
+        required_keys = {
+            "session_id",
+            "practice_item_text",
+            "item_skills",
+            "dialogue_history",
+        }
         if not required_keys.issubset(conversation_record.keys()):
             raise ValueError(f"conversation_record must contain: {required_keys}")
         conversation_record["learner_id"] = self.id

@@ -165,7 +165,9 @@ class EvaluationResults:
         print(f"\nAll passed: {self.all_passed}")
         for s in self.summaries:
             icon = "✓" if s.passed else "✗"
-            print(f"  [{icon}] {s.benchmark_name} / {s.learner_config_label} — {s.status}")
+            print(
+                f"  [{icon}] {s.benchmark_name} / {s.learner_config_label} — {s.status}",
+            )
             if s.error:
                 print(f"        Error: {s.error}")
 

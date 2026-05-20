@@ -10,7 +10,7 @@ from evalconvolearn.benchmarks.flexlearners.placement_test_benchmark import (
 )
 
 
-@pytest.mark.benchmark
+@pytest.mark.benchmark()
 class TestPlacementTestBenchmark:
     """Simulate PlacementTestBenchmark runs with BinarySkillsFlexLearner."""
 

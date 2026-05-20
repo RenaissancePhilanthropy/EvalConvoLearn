@@ -35,8 +35,7 @@ def load_tagged_skill_ids() -> set[str]:
 
     """
     tagged_items_path = (
-        get_florida_doe_data_dir()
-        / "tagged-practice-items-with-responses.csv"
+        get_florida_doe_data_dir() / "tagged-practice-items-with-responses.csv"
     )
 
     skill_ids = set()

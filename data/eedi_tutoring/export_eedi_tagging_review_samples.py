@@ -9,13 +9,14 @@ file and writes three markdown review packets:
 Each packet is saved into the corresponding review folder under
 `data/evaluations/source_data/eedi_tutoring/`.
 
-Example
+Example:
 -------
 ```bash
 uv run python data/evaluations/source_data/eedi_tutoring/export_eedi_tagging_review_samples.py \
   --input data/evaluations/source_data/eedi_tutoring/all_conversations_with_metrics.jsonl \
   --sample-size 20
 ```
+
 """
 
 from __future__ import annotations
@@ -110,7 +111,11 @@ def _read_jsonl(input_path: Path) -> list[dict[str, Any]]:
     return records
 
 
-def _sample_records(records: list[dict[str, Any]], sample_size: int, seed: int) -> list[dict[str, Any]]:
+def _sample_records(
+    records: list[dict[str, Any]],
+    sample_size: int,
+    seed: int,
+) -> list[dict[str, Any]]:
     if sample_size <= 0:
         msg = "--sample-size must be positive."
         raise ValueError(msg)
@@ -177,12 +182,20 @@ def _render_skill_review(records: list[dict[str, Any]], *, input_path: Path) -> 
                 "",
                 "### Stored skill-tagging rationale",
                 "",
-                skill_metadata.get("reasoning", "(not available in saved tagging metadata)"),
+                skill_metadata.get(
+                    "reasoning",
+                    "(not available in saved tagging metadata)",
+                ),
                 "",
                 "### Conversation (capped)",
                 "",
                 "```text",
-                str(record.get("capped_dialogue_history", record.get("dialogue_history", "(missing)"))),
+                str(
+                    record.get(
+                        "capped_dialogue_history",
+                        record.get("dialogue_history", "(missing)"),
+                    ),
+                ),
                 "```",
                 "",
                 "### Reviewer notes",
@@ -230,12 +243,20 @@ def _render_mastery_review(records: list[dict[str, Any]], *, input_path: Path) -
                 "",
                 "### Stored mastery rationale",
                 "",
-                mastery_metadata.get("reasoning", "(not available in saved tagging metadata)"),
+                mastery_metadata.get(
+                    "reasoning",
+                    "(not available in saved tagging metadata)",
+                ),
                 "",
                 "### Conversation (capped)",
                 "",
                 "```text",
-                str(record.get("capped_dialogue_history", record.get("dialogue_history", "(missing)"))),
+                str(
+                    record.get(
+                        "capped_dialogue_history",
+                        record.get("dialogue_history", "(missing)"),
+                    ),
+                ),
                 "```",
                 "",
                 "### Reviewer notes",
@@ -296,12 +317,20 @@ def _render_behavior_review(records: list[dict[str, Any]], *, input_path: Path) 
                 "",
                 "### Stored classification rationale",
                 "",
-                conversation_metrics.get("classification_reasoning", "(not available in saved conversation metrics)"),
+                conversation_metrics.get(
+                    "classification_reasoning",
+                    "(not available in saved conversation metrics)",
+                ),
                 "",
                 "### Conversation (capped)",
                 "",
                 "```text",
-                str(record.get("capped_dialogue_history", record.get("dialogue_history", "(missing)"))),
+                str(
+                    record.get(
+                        "capped_dialogue_history",
+                        record.get("dialogue_history", "(missing)"),
+                    ),
+                ),
                 "```",
                 "",
                 "### Reviewer notes",
@@ -339,9 +368,12 @@ def main() -> int:
     timestamp = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
 
     output_paths = {
-        "skill": REVIEW_DIRS["skill"] / f"{args.output_prefix}_skill_tagging_{timestamp}.md",
-        "mastery": REVIEW_DIRS["mastery"] / f"{args.output_prefix}_mastery_{timestamp}.md",
-        "behavior": REVIEW_DIRS["behavior"] / f"{args.output_prefix}_behavior_{timestamp}.md",
+        "skill": REVIEW_DIRS["skill"]
+        / f"{args.output_prefix}_skill_tagging_{timestamp}.md",
+        "mastery": REVIEW_DIRS["mastery"]
+        / f"{args.output_prefix}_mastery_{timestamp}.md",
+        "behavior": REVIEW_DIRS["behavior"]
+        / f"{args.output_prefix}_behavior_{timestamp}.md",
     }
 
     _write_review_packet(

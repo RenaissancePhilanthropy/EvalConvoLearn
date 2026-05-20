@@ -57,7 +57,11 @@ _OUTPUT_BASE = Path("outputs/dataset_fitted_evals")
 
 _LEARNER_VARIANTS = [
     (BinarySkillLearner, "binary_skills", _OUTPUT_BASE / "binary_skills_learner"),
-    (ConversationHistoryLearner, "conv_history", _OUTPUT_BASE / "conversation_history_learner"),
+    (
+        ConversationHistoryLearner,
+        "conv_history",
+        _OUTPUT_BASE / "conversation_history_learner",
+    ),
 ]
 
 _MODELS = ["gpt-4.1-mini"]
@@ -105,7 +109,8 @@ def _build_eval_config(
         benchmarks_custom_args={
             "DatasetFittedConversationalBenchmark": {
                 "conversations_jsonl_path": conversations_jsonl_path,
-                "conversation_metrics_cache_path": eval_dir / "conversation_metrics_cache.json",
+                "conversation_metrics_cache_path": eval_dir
+                / "conversation_metrics_cache.json",
                 "max_records_per_skill_mastery": 8,
                 "max_conversation_turns": 7,
                 "num_example_conversations_for_tutor_response_generation": few_shot_count,
@@ -129,12 +134,18 @@ def _run_eval(
 ) -> None:
     print("=" * 70)
     print(f"Running: {run_label}")
-    results = sdk.run_base_learner_evaluation(eval_config, skill_space, practice_item_pool)
+    results = sdk.run_base_learner_evaluation(
+        eval_config,
+        skill_space,
+        practice_item_pool,
+    )
     print(f"Run directory : {results.run_dir}")
     print(f"All passed    : {results.all_passed}")
     for summary in results.summaries:
         output_file = summary.output.get("output_file")
-        print(f"  {summary.benchmark_name}: passed={summary.passed}; output={output_file}")
+        print(
+            f"  {summary.benchmark_name}: passed={summary.passed}; output={output_file}",
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -150,8 +161,14 @@ def main(run_id: str | None = None) -> None:
     skill_space = sdk.load_skill_space(Path("data/florida-doe/skill-space.csv"))
     practice_item_pool = sdk.load_practice_items(_PRACTICE_ITEMS_CSV, skill_space)
 
-    for (learner_class, learner_short_name, base_eval_dir), model, few_shot_count in product(
-        _LEARNER_VARIANTS, _MODELS, _FEW_SHOT_COUNTS
+    for (
+        (learner_class, learner_short_name, base_eval_dir),
+        model,
+        few_shot_count,
+    ) in product(
+        _LEARNER_VARIANTS,
+        _MODELS,
+        _FEW_SHOT_COUNTS,
     ):
         model_tag = model.replace(".", "_")
         run_label = f"{learner_short_name}__{model_tag}__fs{few_shot_count}"

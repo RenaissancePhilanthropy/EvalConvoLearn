@@ -1,6 +1,5 @@
 """Unit tests for BaseLearner / BinarySkillsFlexLearner basic API."""
 
-import uuid
 from pathlib import Path
 
 import pytest
@@ -46,7 +45,10 @@ class TestBaseLearnerInitialization:
     def test_unknown_skill_rejected(self, skill_space, tmp_path):
         practice_file = tmp_path / "test.jsonl"
         practice_file.touch()
-        with pytest.raises(ValueError, match="Skill with id NONEXISTENT.SKILL.ID in Learner skills is not part of the defined SkillSpace."):
+        with pytest.raises(
+            ValueError,
+            match="Skill with id NONEXISTENT.SKILL.ID in Learner skills is not part of the defined SkillSpace.",
+        ):
             BinarySkillsFlexLearner(
                 id="unknown-test",
                 mastered_skills=["NONEXISTENT.SKILL.ID"],

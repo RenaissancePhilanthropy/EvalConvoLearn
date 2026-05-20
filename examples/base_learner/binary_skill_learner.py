@@ -64,7 +64,9 @@ class BinarySkillLearner(BaseLearner):
         if not self.knowledge_cache_dir:
             return None
         cache_key = self._skill_set_cache_key(mastered_skill_ids)
-        return Path(self.knowledge_cache_dir) / f"{type(self).__name__}_{cache_key}.json"
+        return (
+            Path(self.knowledge_cache_dir) / f"{type(self).__name__}_{cache_key}.json"
+        )
 
     def save_knowledge_snapshot(self, mastered_skill_ids: list[str]) -> None:
         cache_path = self._get_cache_path(mastered_skill_ids)
@@ -105,7 +107,9 @@ class BinarySkillLearner(BaseLearner):
         return self._client
 
     def _skill_catalogue_str(self) -> str:
-        return "\n".join(f"- {s.id}: {s.description[:120]}" for s in self.skill_space.skills)
+        return "\n".join(
+            f"- {s.id}: {s.description[:120]}" for s in self.skill_space.skills
+        )
 
     def _tag_item_with_skills(self, first_tutor_message: str) -> list[str]:
         """Use an LLM to identify which skill-space skills the item targets."""
@@ -129,7 +133,9 @@ class BinarySkillLearner(BaseLearner):
         )
         text = resp.choices[0].message.content or ""
         valid_ids = {s.id for s in self.skill_space.skills}
-        tagged = [line.strip() for line in text.splitlines() if line.strip() in valid_ids]
+        tagged = [
+            line.strip() for line in text.splitlines() if line.strip() in valid_ids
+        ]
         logger.debug("[BinarySkillLearner] tagged skills: %s", tagged)
         return tagged
 
@@ -171,7 +177,8 @@ class BinarySkillLearner(BaseLearner):
 
         if use_cache and self.load_knowledge_snapshot(mastered_skill_ids):
             logger.info(
-                "[initialize_from_skills] learner=%s loaded from cache", self.id
+                "[initialize_from_skills] learner=%s loaded from cache",
+                self.id,
             )
             return
 
@@ -201,12 +208,18 @@ class BinarySkillLearner(BaseLearner):
                 return content.message
             return str(content)
 
-        tutor_messages = [m for m in conversation_history if m.get("role") == "assistant"]
+        tutor_messages = [
+            m for m in conversation_history if m.get("role") == "assistant"
+        ]
         if len(tutor_messages) <= 1:
-            first_msg = _extract_content(tutor_messages[0]["content"]) if tutor_messages else ""
+            first_msg = (
+                _extract_content(tutor_messages[0]["content"]) if tutor_messages else ""
+            )
             self._current_item_skills = self._tag_item_with_skills(first_msg)
 
-        unmastered = [s for s in self._current_item_skills if s not in self.mastered_skill_ids]
+        unmastered = [
+            s for s in self._current_item_skills if s not in self.mastered_skill_ids
+        ]
         all_mastered = len(unmastered) == 0 and len(self._current_item_skills) > 0
 
         mastered_str = ", ".join(sorted(self.mastered_skill_ids)) or "none"
@@ -255,7 +268,10 @@ class BinarySkillLearner(BaseLearner):
             temperature=0.7,
             max_tokens=300,
         )
-        return {"response": resp.choices[0].message.content, "is_conversation_ended": False}
+        return {
+            "response": resp.choices[0].message.content,
+            "is_conversation_ended": False,
+        }
 
     # ------------------------------------------------------------------ #
     #  End conversation — learn demonstrated skills
@@ -317,7 +333,10 @@ class BinarySkillLearner(BaseLearner):
                     len(self.mastered_skill_ids),
                 )
             else:
-                logger.info("[BinarySkillLearner %s] no new skills demonstrated", self.id)
+                logger.info(
+                    "[BinarySkillLearner %s] no new skills demonstrated",
+                    self.id,
+                )
         except Exception as exc:
             logger.error("Error evaluating demonstrated skills: %s", exc)
 

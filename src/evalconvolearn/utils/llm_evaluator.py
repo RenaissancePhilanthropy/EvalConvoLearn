@@ -51,6 +51,7 @@ class ReusedResolvedMisconceptionVerdict(BaseModel):
     reused_incorrectly: bool
     repeated_misconception: str = ""
 
+
 class ConversationErrorLabels(BaseModel):
     """Conversation-level math error labels."""
 

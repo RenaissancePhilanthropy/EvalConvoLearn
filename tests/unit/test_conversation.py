@@ -63,7 +63,9 @@ class TestConversationGraphStructure:
         compiled_graph = conversation.compile_graph()
         graph = compiled_graph.get_graph()
         node_names = (
-            list(graph.nodes.keys()) if hasattr(graph.nodes, "keys") else list(graph.nodes)
+            list(graph.nodes.keys())
+            if hasattr(graph.nodes, "keys")
+            else list(graph.nodes)
         )
         assert "__start__" in node_names or len(node_names) > 0
 

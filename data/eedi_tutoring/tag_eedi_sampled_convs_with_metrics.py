@@ -13,12 +13,13 @@ The added metrics include:
 - learner talk moves
 
 Example:
-
+-------
 ```bash
 uv run python data/evaluations/source_data/eedi_tutoring/tag_eedi_sampled_convs_with_metrics.py \
   --input data/evaluations/source_data/eedi_tutoring/all_conversations.jsonl \
   --output data/evaluations/source_data/eedi_tutoring/all_conversations_with_metrics.jsonl
 ```
+
 """
 
 from __future__ import annotations
@@ -47,8 +48,12 @@ from evalconvolearn.benchmarks.realistic_benchmarks_from_conversation_data.datas
 DEFAULT_LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
 DEFAULT_INPUT = Path(__file__).resolve().with_name("all_conversations.jsonl")
-DEFAULT_OUTPUT = Path(__file__).resolve().with_name("all_conversations_with_metrics.jsonl")
-DEFAULT_CACHE_PATH = Path(__file__).resolve().with_name("conversation_metrics_cache.json")
+DEFAULT_OUTPUT = (
+    Path(__file__).resolve().with_name("all_conversations_with_metrics.jsonl")
+)
+DEFAULT_CACHE_PATH = (
+    Path(__file__).resolve().with_name("conversation_metrics_cache.json")
+)
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +173,10 @@ def main() -> int:
     tagged_records: list[dict[str, Any]] = []
     for index, record in enumerate(records, start=1):
         metrics = compute_conversation_metrics(
-            dialogue_history=record.get("capped_dialogue_history", record.get("dialogue_history", [])),
+            dialogue_history=record.get(
+                "capped_dialogue_history",
+                record.get("dialogue_history", []),
+            ),
             problem_text=str(record.get("practice_item_text", "")),
             correct_answer=str(record.get("correct_answer", "")),
             cache_namespace="real",

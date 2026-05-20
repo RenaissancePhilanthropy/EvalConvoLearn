@@ -28,11 +28,9 @@ from openai import OpenAI
 from pydantic import BaseModel
 from sklearn.metrics.pairwise import cosine_similarity
 
-from evalconvolearn import EvalConvoLearn, FlexLearner
+from evalconvolearn import FlexLearner
 from evalconvolearn.models.practice_item import PracticeItem
 from evalconvolearn.models.skill import Skill
-from evalconvolearn.models.tutor import Tutor
-
 
 # ── Pydantic models for structured LLM extraction ───────────────────────── #
 
@@ -70,17 +68,34 @@ class SimpleKnowledgeGraph:
 
     # Example of entity types
     DEFAULT_ENTITY_TYPES: list[str] = [
-        "multiplication", "expression", "solving",
-        "dividing", "number", "fraction", "equation",
-        "transformation", "length",
-        "concept", "addition", "area", "example", "simplify",
-        "operation", "ratio", "subtract",
-        "factor", "quantity", "fractions"
+        "multiplication",
+        "expression",
+        "solving",
+        "dividing",
+        "number",
+        "fraction",
+        "equation",
+        "transformation",
+        "length",
+        "concept",
+        "addition",
+        "area",
+        "example",
+        "simplify",
+        "operation",
+        "ratio",
+        "subtract",
+        "factor",
+        "quantity",
+        "fractions",
     ]
     DEFAULT_RELATIONSHIP_TYPES: list[str] = [
-        "defining the meaning", "identifying the property",
-        "suggesting structural relationship", "suggesting sequential relationship",
-        "connecting", "applying to",
+        "defining the meaning",
+        "identifying the property",
+        "suggesting structural relationship",
+        "suggesting sequential relationship",
+        "connecting",
+        "applying to",
     ]
 
     def __init__(
@@ -109,7 +124,10 @@ class SimpleKnowledgeGraph:
         return resp.data[0].embedding
 
     def get_or_create_node(
-        self, entity_text: str, entity_label: str, triplet_source_id: str
+        self,
+        entity_text: str,
+        entity_label: str,
+        triplet_source_id: str,
     ) -> str:
         if entity_text in self.nodes:
             return entity_text
@@ -168,7 +186,9 @@ class SimpleKnowledgeGraph:
         return completion.choices[0].message.parsed
 
     def update_from_conversation(
-        self, conversation_text: str, max_triplets: int = 5
+        self,
+        conversation_text: str,
+        max_triplets: int = 5,
     ) -> list[Triplet]:
         result = self.extract_triplets_from_text(conversation_text)
         added: list[Triplet] = []
@@ -177,7 +197,11 @@ class SimpleKnowledgeGraph:
             added.append(triplet)
         return added
 
-    def retrieve_relevant_nodes(self, query: str, top_k: int = 5) -> list[tuple[str, float]]:
+    def retrieve_relevant_nodes(
+        self,
+        query: str,
+        top_k: int = 5,
+    ) -> list[tuple[str, float]]:
         if not self.embedding_dict:
             return []
         labels = list(self.embedding_dict.keys())
@@ -214,7 +238,10 @@ class SimpleKnowledgeGraph:
             props["nodes"][nid] = {k: v for k, v in ndata.items() if k != "embedding"}
         with open(path / "property_graph_store.json", "w") as f:
             json.dump(props, f, indent=2)
-        vec = {"embedding_dict": dict(self.embedding_dict), "metadata_dict": self.metadata_dict}
+        vec = {
+            "embedding_dict": dict(self.embedding_dict),
+            "metadata_dict": self.metadata_dict,
+        }
         with open(path / "default__vector_store.json", "w") as f:
             json.dump(vec, f, indent=2)
 
@@ -254,7 +281,9 @@ class SimpleKnowledgeGraph:
         self.nodes = {nid: dict(ndata) for nid, ndata in state.get("nodes", {}).items()}
         self.relations = dict(state.get("relations", {}))
         self.triplets = [list(t) for t in state.get("triplets", [])]
-        self.embedding_dict = {k: list(v) for k, v in state.get("embedding_dict", {}).items()}
+        self.embedding_dict = {
+            k: list(v) for k, v in state.get("embedding_dict", {}).items()
+        }
         self.metadata_dict = dict(state.get("metadata_dict", {}))
 
     @property
@@ -343,7 +372,9 @@ class KnowledgeGraphLearner(FlexLearner):
     def update_knowledge_from_conversation(self, dialogue_history: str) -> None:
         try:
             added = self.kg.update_from_conversation(dialogue_history, max_triplets=5)
-            print(f"  [KG update] Added {len(added)} triplet(s) to the knowledge graph.")
+            print(
+                f"  [KG update] Added {len(added)} triplet(s) to the knowledge graph.",
+            )
             if self.kg_store_path:
                 self.kg.save(Path(self.kg_store_path))
         except Exception as exc:
@@ -381,7 +412,10 @@ class KnowledgeGraphLearner(FlexLearner):
 
         # if no explicit triplets, initialize from mastered skills using skill_id_to_triplets mapping
         mastered_skills = kwargs.get("learner_mastered_skills", [])
-        skill_id_to_triplets: dict[str, list[dict]] = kwargs.get("skill_id_to_triplets", {})
+        skill_id_to_triplets: dict[str, list[dict]] = kwargs.get(
+            "skill_id_to_triplets",
+            {},
+        )
         for skill in mastered_skills:
             for t in skill_id_to_triplets.get(skill.id, []):
                 self.kg.add_triplet(Triplet(**t))
@@ -389,7 +423,12 @@ class KnowledgeGraphLearner(FlexLearner):
     # ── Core learner methods ─────────────────────────────────────────── #
 
     def save_practice_conversation(self, conversation_record: dict) -> None:
-        required_keys = {"session_id", "practice_item_text", "item_skills", "dialogue_history"}
+        required_keys = {
+            "session_id",
+            "practice_item_text",
+            "item_skills",
+            "dialogue_history",
+        }
         if not required_keys.issubset(conversation_record.keys()):
             raise ValueError(f"conversation_record must contain: {required_keys}")
         conversation_record["learner_id"] = self.id
@@ -418,7 +457,7 @@ def build_initial_kg_snapshot(triplets: list[dict]) -> dict:
     """
     print(
         f"[build_initial_kg_snapshot] Computing embeddings for {len(triplets)} triplet(s) "
-        "— this happens once and the result is reused for every learner."
+        "— this happens once and the result is reused for every learner.",
     )
     kg = SimpleKnowledgeGraph()
     for t in triplets:
@@ -426,6 +465,6 @@ def build_initial_kg_snapshot(triplets: list[dict]) -> dict:
     snapshot = kg.get_state()
     print(
         f"[build_initial_kg_snapshot] Done — {kg.num_nodes} node(s), "
-        f"{kg.num_triplets} triplet(s) stored in snapshot."
+        f"{kg.num_triplets} triplet(s) stored in snapshot.",
     )
     return snapshot

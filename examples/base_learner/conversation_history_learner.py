@@ -63,7 +63,9 @@ class ConversationHistoryLearner(BaseLearner):
         if not self.knowledge_cache_dir:
             return None
         cache_key = self._skill_set_cache_key(mastered_skill_ids)
-        return Path(self.knowledge_cache_dir) / f"{type(self).__name__}_{cache_key}.json"
+        return (
+            Path(self.knowledge_cache_dir) / f"{type(self).__name__}_{cache_key}.json"
+        )
 
     def export_knowledge_state(self) -> dict[str, Any]:
         return {"knowledge_items": list(self.knowledge_items)}
@@ -147,7 +149,9 @@ class ConversationHistoryLearner(BaseLearner):
     ) -> dict[str, Any]:
         """Respond to the tutor using conversation history and current knowledge."""
         knowledge_str = (
-            "\n".join(self.knowledge_items) if self.knowledge_items else "No prior knowledge."
+            "\n".join(self.knowledge_items)
+            if self.knowledge_items
+            else "No prior knowledge."
         )
 
         def _extract_content(content: Any) -> str:
@@ -189,7 +193,10 @@ class ConversationHistoryLearner(BaseLearner):
             temperature=0.7,
             max_tokens=300,
         )
-        return {"response": response.choices[0].message.content, "is_conversation_ended": False}
+        return {
+            "response": response.choices[0].message.content,
+            "is_conversation_ended": False,
+        }
 
     def end_conversation(self, conversation_history: list[dict], **kwargs: Any) -> None:
         """Extract a knowledge summary from the conversation and store it."""
@@ -204,7 +211,8 @@ class ConversationHistoryLearner(BaseLearner):
         )
 
         logger.info(
-            "Updating knowledge from conversation (first 200 chars): %s…", dialogue[:200]
+            "Updating knowledge from conversation (first 200 chars): %s…",
+            dialogue[:200],
         )
         try:
             completion = self._get_client().chat.completions.create(

@@ -26,12 +26,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from flexlearner.flexlearner_conversation_history import (  # noqa: E402
     ConversationHistoryLearner,
 )
-from flexlearner.flexlearner_knowledge_graph import (  # noqa: E402
-    KnowledgeGraphLearner,
-)
+from flexlearner.flexlearner_knowledge_graph import KnowledgeGraphLearner  # noqa: E402
 
 from evalconvolearn import BinarySkillsFlexLearner, EvalConvoLearn  # noqa: E402
-from evalconvolearn.models.evaluation import EvaluationConfig, LearnerEvalConfig  # noqa: E402
+from evalconvolearn.models.evaluation import (  # noqa: E402
+    EvaluationConfig,
+    LearnerEvalConfig,
+)
 from evalconvolearn.utils.benchmark_results import print_placement_results  # noqa: E402
 
 # KG seed triplets for MA.6.NSO.1.1 and MA.6.NSO.1.2
@@ -81,7 +82,8 @@ def main() -> None:
     data_root = Path("data") / "florida-doe"
     skill_space = sdk.load_skill_space(data_root / "skill-space.csv")
     items = sdk.load_practice_items(
-        data_root / "tagged-practice-items-with-responses.csv", skill_space,
+        data_root / "tagged-practice-items-with-responses.csv",
+        skill_space,
     )
 
     eval_config = EvaluationConfig(
@@ -102,7 +104,10 @@ def main() -> None:
             LearnerEvalConfig(
                 learner_class=KnowledgeGraphLearner,
                 label="kg_flexlearner",
-                mastered_skills=["MA.6.NSO.2.1", "MA.6.NSO.2.2"],  # align with KG seed triplets above
+                mastered_skills=[
+                    "MA.6.NSO.2.1",
+                    "MA.6.NSO.2.2",
+                ],  # align with KG seed triplets above
                 benchmarks=["PlacementTestBenchmark"],
                 init_knowledge_kwargs={
                     "initial_triplets": _KG_SEED_TRIPLETS,  # illustrate passing the initial KG triplets directly
@@ -115,7 +120,9 @@ def main() -> None:
     )
 
     results = sdk.run_evaluation(
-        eval_config=eval_config, skill_space=skill_space, practice_item_pool=items,
+        eval_config=eval_config,
+        skill_space=skill_space,
+        practice_item_pool=items,
     )
     results.print_summary()
 
@@ -124,7 +131,10 @@ def main() -> None:
             continue
         output_file_str = (bench_summary.output or {}).get("output_file", "")
         if output_file_str:
-            print_placement_results(Path(output_file_str), bench_summary.learner_config_label)
+            print_placement_results(
+                Path(output_file_str),
+                bench_summary.learner_config_label,
+            )
 
 
 if __name__ == "__main__":

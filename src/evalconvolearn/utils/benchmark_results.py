@@ -238,7 +238,9 @@ def print_mcp_results(output_file: Path, label: str) -> None:
     print(f"    Targets evaluated  : {agg.get('total_targets', '?')}")
     print(f"    Targets mastered   : {agg.get('targets_mastered', '?')}")
     print(f"    Avg turns/skill    : {agg.get('overall_avg_turns_per_skill', 0):.2f}")
-    print(f"    Consolidation rate : {agg.get('overall_consolidation_solution_rate', 0):.0%}")
+    print(
+        f"    Consolidation rate : {agg.get('overall_consolidation_solution_rate', 0):.0%}",
+    )
     for tr in mcp_data.get("per_target_results", []):
         icon = "✓" if tr.get("target_mastered") else "✗"
         print(

@@ -64,7 +64,8 @@ def main() -> None:
     data_root = Path("data") / "florida-doe"
     skill_space = sdk.load_skill_space(data_root / "skill-space.csv")
     items = sdk.load_practice_items(
-        data_root / "tagged-practice-items-with-responses.csv", skill_space
+        data_root / "tagged-practice-items-with-responses.csv",
+        skill_space,
     )
 
     print("Pre-building initial KG snapshot...")
@@ -87,7 +88,10 @@ def main() -> None:
             LearnerEvalConfig(
                 learner_class=KnowledgeGraphLearner,
                 label="kg_flexlearner",
-                mastered_skills=["MA.6.NSO.2.1", "MA.6.NSO.2.2"], # use the skills defined in the knowledge graph above
+                mastered_skills=[
+                    "MA.6.NSO.2.1",
+                    "MA.6.NSO.2.2",
+                ],  # use the skills defined in the knowledge graph above
                 benchmarks=["LearningFromConversationBenchmark"],
                 init_knowledge_kwargs={"prebuilt_kg_state": kg_initial_state},
             ),
@@ -103,7 +107,9 @@ def main() -> None:
     )
 
     results = sdk.run_evaluation(
-        eval_config=eval_config, skill_space=skill_space, practice_item_pool=items
+        eval_config=eval_config,
+        skill_space=skill_space,
+        practice_item_pool=items,
     )
 
     results.print_summary()

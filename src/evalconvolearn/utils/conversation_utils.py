@@ -44,8 +44,8 @@ def run_conversation_to_completion(
     turn_count = 1
     while not conversation_ended and turn_count < max_turns:
         tutor_response: TutorResponse = tutor.get_teacher_followup_message(
-                dialogue_history=metrics["messages"],
-            )
+            dialogue_history=metrics["messages"],
+        )
         metrics["messages"].append(
             {"role": "assistant", "content": tutor_response.message},
         )
@@ -60,7 +60,9 @@ def run_conversation_to_completion(
 
         metrics["messages"].append({"role": "user", "content": full_response})
         turn_count += 1
-        conversation_ended = conversation_ended or ("Conversation ended" in full_response)
+        conversation_ended = conversation_ended or (
+            "Conversation ended" in full_response
+        )
 
     if turn_count < max_turns:
         metrics["solution_found"] = True

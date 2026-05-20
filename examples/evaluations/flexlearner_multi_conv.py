@@ -23,14 +23,16 @@ load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from flexlearner.flexlearner_conversation_history import ConversationHistoryLearner  # noqa: E402
-from flexlearner.flexlearner_knowledge_graph import (  # noqa: E402
-    KnowledgeGraphLearner,
-    build_initial_kg_snapshot,
+from flexlearner.flexlearner_conversation_history import (  # noqa: E402
+    ConversationHistoryLearner,
 )
+from flexlearner.flexlearner_knowledge_graph import KnowledgeGraphLearner  # noqa: E402
 
 from evalconvolearn import BinarySkillsFlexLearner, EvalConvoLearn  # noqa: E402
-from evalconvolearn.models.evaluation import EvaluationConfig, LearnerEvalConfig  # noqa: E402
+from evalconvolearn.models.evaluation import (  # noqa: E402
+    EvaluationConfig,
+    LearnerEvalConfig,
+)
 from evalconvolearn.utils.benchmark_results import print_mcp_results  # noqa: E402
 
 # Seed triplets for MA.6.NSO.2.1 (decimals) and MA.6.NSO.2.2 (fractions)
@@ -86,10 +88,12 @@ def main() -> None:
     data_root = Path("data") / "florida-doe"
     skill_space = sdk.load_skill_space(data_root / "skill-space.csv")
     items = sdk.load_practice_items(
-        data_root / "tagged-practice-items-with-responses.csv", skill_space,
+        data_root / "tagged-practice-items-with-responses.csv",
+        skill_space,
     )
     oversampled_items = sdk.load_practice_items(
-        data_root / "oversampled_items" / "oversampled-items-x10.csv", skill_space,
+        data_root / "oversampled_items" / "oversampled-items-x10.csv",
+        skill_space,
     )
 
     eval_config = EvaluationConfig(
@@ -109,7 +113,10 @@ def main() -> None:
             LearnerEvalConfig(
                 learner_class=KnowledgeGraphLearner,
                 label="kg_flexlearner",
-                mastered_skills=["MA.6.NSO.2.1", "MA.6.NSO.2.2"],  # align with KG triplets above
+                mastered_skills=[
+                    "MA.6.NSO.2.1",
+                    "MA.6.NSO.2.2",
+                ],  # align with KG triplets above
                 benchmarks=["MultiConversationsPracticeBenchmark"],
                 init_knowledge_kwargs={
                     "skill_id_to_triplets": _SKILL_ID_TO_TRIPLETS,  # selects relevant triplets at init time
@@ -127,7 +134,9 @@ def main() -> None:
     )
 
     results = sdk.run_evaluation(
-        eval_config=eval_config, skill_space=skill_space, practice_item_pool=items,
+        eval_config=eval_config,
+        skill_space=skill_space,
+        practice_item_pool=items,
     )
     results.print_summary()
 

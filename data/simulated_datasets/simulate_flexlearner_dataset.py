@@ -48,10 +48,7 @@ logger = logging.getLogger(__name__)
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SKILL_SPACE_CSV = REPO_ROOT / "data" / "florida-doe" / "skill-space.csv"
 PRACTICE_ITEMS_CSV = (
-    REPO_ROOT
-    / "data"
-    / "florida-doe"
-    / "tagged-practice-items-with-responses.csv"
+    REPO_ROOT / "data" / "florida-doe" / "tagged-practice-items-with-responses.csv"
 )
 
 

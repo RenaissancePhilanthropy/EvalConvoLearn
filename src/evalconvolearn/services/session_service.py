@@ -3,8 +3,6 @@
 import uuid
 from pathlib import Path
 
-from ..models.tutor import Tutor
-
 from ..core.base_learner import BaseLearner
 from ..core.config import EvalConvoLearnConfig
 from ..core.flexlearner import FlexLearner
@@ -13,6 +11,7 @@ from ..models.base_learner_conversation import (
     run_base_learner_conversation,
 )
 from ..models.binary_skills_flexlearner import StudentPool
+from ..models.tutor import Tutor
 from ..storage.file_storage import FileSessionStorage, FileStudentPoolStorage
 
 

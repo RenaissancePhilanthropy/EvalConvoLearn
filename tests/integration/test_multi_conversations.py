@@ -10,7 +10,7 @@ from evalconvolearn.benchmarks.flexlearners.multi_conversations_practice_benchma
 )
 
 
-@pytest.mark.benchmark
+@pytest.mark.benchmark()
 class TestMultiConversationsBenchmark:
     """Simulate MultiConversationsPracticeBenchmark runs with BinarySkillsFlexLearner."""
 

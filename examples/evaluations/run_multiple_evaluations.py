@@ -36,12 +36,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from base_learner.conversation_history_learner import ConversationHistoryLearner
+from flexlearner.flexlearner_knowledge_graph import (
+    KnowledgeGraphLearner,
+    build_initial_kg_snapshot,
+)
+
 from evalconvolearn import EvalConvoLearn, EvaluationResults
 from evalconvolearn.models.binary_skills_flexlearner import BinarySkillsFlexLearner
 from evalconvolearn.models.evaluation import EvaluationConfig, LearnerEvalConfig
-
-from base_learner.conversation_history_learner import ConversationHistoryLearner
-from flexlearner.flexlearner_knowledge_graph import KnowledgeGraphLearner, build_initial_kg_snapshot
 
 logging.basicConfig(
     level=logging.WARNING,
@@ -55,16 +58,10 @@ logger.setLevel(logging.INFO)
 # Paths
 # ---------------------------------------------------------------------------
 DATA_ROOT = PROJECT_ROOT / "data" / "florida-doe"
-BL_ITEMS_PATH = (
-    DATA_ROOT
-    / "tagged-practice-items-with-responses.csv"
-)
+BL_ITEMS_PATH = DATA_ROOT / "tagged-practice-items-with-responses.csv"
 MULTI_LEARNER_EVALS_DIR = PROJECT_ROOT / "outputs" / "multi_learner_evals"
 BL_KNOWLEDGE_CACHE_DIR = (
-    PROJECT_ROOT
-    / "outputs"
-    / "base_learner"
-    / "learning_from_conversation"
+    PROJECT_ROOT / "outputs" / "base_learner" / "learning_from_conversation"
 )
 
 RUNS_PER_SCENARIO = 2
@@ -277,7 +274,9 @@ SKILL_ID_TO_TRIPLETS: dict[str, list[dict]] = {
 
 def build_base_learner_configs(timestamp: str) -> tuple[EvaluationConfig, ...]:
     """Return EvaluationConfigs for base-learner benchmarks."""
-    common_cache_kw = {"knowledge_cache_dir": BL_KNOWLEDGE_CACHE_DIR / f"knowledge_cache_{timestamp}"}
+    common_cache_kw = {
+        "knowledge_cache_dir": BL_KNOWLEDGE_CACHE_DIR / f"knowledge_cache_{timestamp}",
+    }
     lfc_configs = [
         LearnerEvalConfig(
             learner_class=ConversationHistoryLearner,

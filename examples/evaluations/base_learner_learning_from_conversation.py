@@ -25,7 +25,7 @@ from evalconvolearn import EvalConvoLearn, EvaluationConfig, LearnerEvalConfig
 
 _OUTPUT_DIR = Path("outputs/base_learner/learning_from_conversation")
 _MOCK_RESPONSES_CSV = Path(
-    "data/florida-doe/tagged-practice-items-with-responses.csv"
+    "data/florida-doe/tagged-practice-items-with-responses.csv",
 )
 
 

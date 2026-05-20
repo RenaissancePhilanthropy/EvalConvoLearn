@@ -6,13 +6,8 @@ from .alignment_matrices import (
     generate_placement_test_alignment_matrix,
 )
 
-# Conversation runner
-from .conversation_utils import run_conversation_to_completion
-
 # Metric calculation functions
-from .benchmark_metrics import (
-    calculate_placement_test_alignment,
-)
+from .benchmark_metrics import calculate_placement_test_alignment
 from .benchmark_results import (
     PlacementTestResult,
     print_lfc_results,
@@ -20,6 +15,9 @@ from .benchmark_results import (
     print_placement_results,
     print_placement_test_results,
 )
+
+# Conversation runner
+from .conversation_utils import run_conversation_to_completion
 
 # Data loaders
 from .data_loaders import (

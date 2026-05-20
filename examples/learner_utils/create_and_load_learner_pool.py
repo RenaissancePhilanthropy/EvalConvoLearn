@@ -35,9 +35,7 @@ def main():
     )
 
     items = sdk.load_practice_items(
-        Path("data")
-        / "florida-doe"
-        / "tagged-practice-items-with-responses.csv",
+        Path("data") / "florida-doe" / "tagged-practice-items-with-responses.csv",
         skill_space,
     )
 

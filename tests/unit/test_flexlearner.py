@@ -1,10 +1,9 @@
 """Unit tests for FlexLearner skill-guardrail machinery."""
 
-import uuid
-
 import pytest
 
 from evalconvolearn.models.binary_skills_flexlearner import BinarySkillsFlexLearner
+
 
 class TestFlexLearnerLearnableSkills:
     """Test skill prereq guardrails: get_learnable_skills and can_learn_skill."""
@@ -37,7 +36,12 @@ class TestFlexLearnerLearnableSkills:
 class TestFlexLearnerKnowledgeForProblem:
     """Test problem-specific knowledge representation."""
 
-    def test_knowledge_for_mastered_item(self, learner, practice_item_pool, skill_space):
+    def test_knowledge_for_mastered_item(
+        self,
+        learner,
+        practice_item_pool,
+        skill_space,
+    ):
         mastered_items = [
             item
             for item in practice_item_pool.items
@@ -51,7 +55,12 @@ class TestFlexLearnerKnowledgeForProblem:
         assert isinstance(knowledge, str)
         assert len(knowledge) > 0
 
-    def test_knowledge_for_unmastered_item(self, learner, practice_item_pool, skill_space):
+    def test_knowledge_for_unmastered_item(
+        self,
+        learner,
+        practice_item_pool,
+        skill_space,
+    ):
         unmastered_items = [
             item
             for item in practice_item_pool.items

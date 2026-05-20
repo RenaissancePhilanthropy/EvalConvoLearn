@@ -9,11 +9,9 @@ import json
 import os
 import sys
 import time
+
 import dotenv
-from pathlib import Path
-
-
-from openai import OpenAI, APIError
+from openai import APIError, OpenAI
 
 
 def _clean_text(text: str) -> str:
@@ -21,7 +19,11 @@ def _clean_text(text: str) -> str:
     return text.strip().strip('"').strip("'")
 
 
-def _build_helpful_response_prompt(problem: str, skill_id: str, prerequisites: str) -> str:
+def _build_helpful_response_prompt(
+    problem: str,
+    skill_id: str,
+    prerequisites: str,
+) -> str:
     return f"""You are a highly effective math tutor creating a comprehensive teaching response for a 6th-grade student.
 
 Your task is to create a single tutor response that clearly teaches the target skill by working through the given practice problem.
@@ -67,7 +69,11 @@ Now create your comprehensive helpful tutor response. Return ONLY a JSON object 
 }}"""
 
 
-def _build_unhelpful_response_prompt(problem: str, skill_id: str, prerequisites: str) -> str:
+def _build_unhelpful_response_prompt(
+    problem: str,
+    skill_id: str,
+    prerequisites: str,
+) -> str:
     return f"""You are simulating a poor math tutor creating an unhelpful response for a 6th-grade student.
 
 Your task is to create a single tutor response that is vague, unhelpful, and does NOT effectively teach the student.
@@ -116,7 +122,9 @@ def _generate_response(
         system_message = "You are a highly effective 6th-grade math tutor who creates comprehensive teaching responses."
     else:
         prompt = _build_unhelpful_response_prompt(problem, skill_id, prerequisites)
-        system_message = "You are simulating a poor tutor who gives vague, unhelpful responses."
+        system_message = (
+            "You are simulating a poor tutor who gives vague, unhelpful responses."
+        )
 
     last_error: Exception | None = None
 
@@ -133,7 +141,7 @@ def _generate_response(
                     {
                         "role": "user",
                         "content": prompt,
-                    }
+                    },
                 ],
             )
 
@@ -171,10 +179,16 @@ def _generate_response(
 
         except APIError as exc:
             last_error = exc
-            print(f"API error (attempt {attempt}/{max_retries}): {exc}", file=sys.stderr)
+            print(
+                f"API error (attempt {attempt}/{max_retries}): {exc}",
+                file=sys.stderr,
+            )
         except Exception as exc:
             last_error = exc
-            print(f"Unexpected error (attempt {attempt}/{max_retries}): {exc}", file=sys.stderr)
+            print(
+                f"Unexpected error (attempt {attempt}/{max_retries}): {exc}",
+                file=sys.stderr,
+            )
 
         if attempt < max_retries:
             time.sleep(sleep_seconds)
@@ -192,7 +206,7 @@ def main() -> int:
         description=(
             "Generate both helpful and unhelpful tutor responses for tagged practice items "
             "and output a CSV with the responses."
-        )
+        ),
     )
     parser.add_argument(
         "--input",
@@ -244,21 +258,30 @@ def main() -> int:
             existing_reader = csv.DictReader(existing_file)
             for row in existing_reader:
                 processed_problems.add(_clean_text(row.get("problem", "")))
-        print(f"Resuming: skipping {len(processed_problems)} already processed problems.", file=sys.stderr)
+        print(
+            f"Resuming: skipping {len(processed_problems)} already processed problems.",
+            file=sys.stderr,
+        )
 
     output_mode = "a" if args.resume and os.path.exists(args.output) else "w"
     write_header = not (args.resume and os.path.exists(args.output))
 
-    with open(args.input, newline="", encoding="utf-8") as infile, open(
-        args.output, output_mode, newline="", encoding="utf-8"
-    ) as outfile:
+    with (
+        open(args.input, newline="", encoding="utf-8") as infile,
+        open(
+            args.output,
+            output_mode,
+            newline="",
+            encoding="utf-8",
+        ) as outfile,
+    ):
         reader = csv.DictReader(infile)
         fieldnames = [
             "problem",
             "skill_id",
             "prerequisites",
             "helpful_response",
-            "unhelpful_response"
+            "unhelpful_response",
         ]
         writer = csv.DictWriter(outfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
 
@@ -277,7 +300,10 @@ def main() -> int:
             prerequisites = _clean_text(row.get("prerequisites", ""))
 
             if not problem:
-                print(f"Warning: empty problem at row {idx}, skipping.", file=sys.stderr)
+                print(
+                    f"Warning: empty problem at row {idx}, skipping.",
+                    file=sys.stderr,
+                )
                 continue
 
             if args.resume and problem in processed_problems:
@@ -315,7 +341,7 @@ def main() -> int:
                     "prerequisites": prerequisites,
                     "helpful_response": helpful_response,
                     "unhelpful_response": unhelpful_response,
-                }
+                },
             )
 
             rows_processed += 1

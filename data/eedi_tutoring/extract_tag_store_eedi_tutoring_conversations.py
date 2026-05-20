@@ -23,7 +23,7 @@ This script:
     format, including the true `tutor_id` separately from `learner_id`.
 
 Example:
---------
+-------
 ```bash
 uv run python data/evaluations/source_data/eedi_tutoring/extract_tag_store_eedi_tutoring_conversations.py \
   --sample-size 100 \
@@ -48,9 +48,9 @@ from pathlib import Path
 from typing import Any, TypeVar, cast
 
 import pandas as pd
+from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -220,10 +220,7 @@ def _parse_args() -> argparse.Namespace:
         "--log-level",
         default=DEFAULT_LOG_LEVEL,
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help=(
-            "Console log verbosity "
-            f"(default: {DEFAULT_LOG_LEVEL})."
-        ),
+        help=("Console log verbosity " f"(default: {DEFAULT_LOG_LEVEL})."),
     )
     return parser.parse_args()
 
@@ -342,13 +339,21 @@ def load_eedi_frames() -> tuple[pd.DataFrame, pd.DataFrame]:
         )
         raise ImportError(msg) from exc
 
-    logger.info("Loading Eedi dialogue split: %s / %s", EEDI_DATASET_NAME, EEDI_DIALOGUE_CONFIG)
+    logger.info(
+        "Loading Eedi dialogue split: %s / %s",
+        EEDI_DATASET_NAME,
+        EEDI_DIALOGUE_CONFIG,
+    )
     ad = load_dataset(
         EEDI_DATASET_NAME,
         EEDI_DIALOGUE_CONFIG,
         split="train",
     )
-    logger.info("Loading Eedi question split: %s / %s", EEDI_DATASET_NAME, EEDI_QUESTION_CONFIG)
+    logger.info(
+        "Loading Eedi question split: %s / %s",
+        EEDI_DATASET_NAME,
+        EEDI_QUESTION_CONFIG,
+    )
     dq = load_dataset(
         EEDI_DATASET_NAME,
         EEDI_QUESTION_CONFIG,
@@ -428,7 +433,10 @@ def _aggregate_dialogues(
         ["InterventionId", "MessageSequence"],
         kind="stable",
     )
-    for intervention_id, intervention_group in sorted_frame.groupby("InterventionId", sort=False):
+    for intervention_id, intervention_group in sorted_frame.groupby(
+        "InterventionId",
+        sort=False,
+    ):
         sorted_group = intervention_group.sort_values("MessageSequence", kind="stable")
         messages: list[dict[str, str]] = []
         student_messages = 0
@@ -558,11 +566,15 @@ def select_sampled_dialogues(
         sampling_config.sample_size // sampling_config.min_conversations_per_tutor,
     )
     sampled_tutor_count = min(len(eligible_tutor_ids), max_tutors_by_budget)
-    sampled_tutor_ids = pd.Series(eligible_tutor_ids).sample(
-        n=sampled_tutor_count,
-        random_state=sampling_config.seed,
-        replace=False,
-    ).tolist()
+    sampled_tutor_ids = (
+        pd.Series(eligible_tutor_ids)
+        .sample(
+            n=sampled_tutor_count,
+            random_state=sampling_config.seed,
+            replace=False,
+        )
+        .tolist()
+    )
 
     logger.info(
         "Sampled %d tutors under sample-size budget %d with minimum %d conversations each",
@@ -576,15 +588,19 @@ def select_sampled_dialogues(
     remaining_budget = sampling_config.sample_size
 
     for offset, tutor_id in enumerate(sampled_tutor_ids):
-        tutor_dialogues = pd.Series(dialogues_by_tutor[tutor_id]).sample(
-            n=len(dialogues_by_tutor[tutor_id]),
-            random_state=sampling_config.seed + offset,
-            replace=False,
-        ).tolist()
-        base_selection = tutor_dialogues[:sampling_config.min_conversations_per_tutor]
+        tutor_dialogues = (
+            pd.Series(dialogues_by_tutor[tutor_id])
+            .sample(
+                n=len(dialogues_by_tutor[tutor_id]),
+                random_state=sampling_config.seed + offset,
+                replace=False,
+            )
+            .tolist()
+        )
+        base_selection = tutor_dialogues[: sampling_config.min_conversations_per_tutor]
         sampled_dialogues.extend(base_selection)
         remaining_dialogues_by_tutor[tutor_id] = tutor_dialogues[
-            sampling_config.min_conversations_per_tutor:
+            sampling_config.min_conversations_per_tutor :
         ]
         remaining_budget -= len(base_selection)
 
@@ -597,7 +613,9 @@ def select_sampled_dialogues(
             sampled_dialogues.append(remaining_for_tutor.pop(0))
             remaining_budget -= 1
         else:
-            tutor_cycle = [item for item in tutor_cycle if remaining_dialogues_by_tutor[item]]
+            tutor_cycle = [
+                item for item in tutor_cycle if remaining_dialogues_by_tutor[item]
+            ]
             cycle_index = 0
             continue
         cycle_index += 1
@@ -691,13 +709,16 @@ def check_questions_require_external_reference_batch(
     """Check whether questions need an external image/file/graph, in batches.
 
     Args:
+    ----
         questions: Sequence of ``(question_id, question_text)`` pairs to check.
         batch_size: Number of questions to send in each LLM call (default 5).
 
     Returns:
+    -------
         Mapping from ``question_id`` to ``True`` if an external reference is
         required, ``False`` otherwise.  Questions whose index is missing from
         the LLM response default to ``False`` with a warning.
+
     """
     results: dict[str, bool] = {}
     for batch_start in range(0, len(questions), batch_size):
@@ -984,7 +1005,9 @@ def main() -> int:
     )
 
     if not sampled_dialogues:
-        _write_stderr("No eligible dialogues remain after external-reference filtering.")
+        _write_stderr(
+            "No eligible dialogues remain after external-reference filtering.",
+        )
         return 1
 
     question_skill_cache: dict[str, SkillTagVerdict] = {}
@@ -1090,9 +1113,13 @@ def main() -> int:
         unmatched_count,
     )
 
-    _write_stdout(f"Eligible sampled dialogues (after external-reference filter): {len(sampled_dialogues)}")
+    _write_stdout(
+        f"Eligible sampled dialogues (after external-reference filter): {len(sampled_dialogues)}",
+    )
     _write_stdout(f"Discarded due to external reference: {external_ref_discarded}")
-    _write_stdout(f"Matched dialogues before final tutor filtering: {len(output_records)}")
+    _write_stdout(
+        f"Matched dialogues before final tutor filtering: {len(output_records)}",
+    )
     _write_stdout(f"Matched and saved dialogues: {len(filtered_output_records)}")
     _write_stdout(f"Discarded after skill tagging: {unmatched_count}")
     _write_stdout(f"Output written to: {args.output}")

@@ -14,10 +14,22 @@ for _, row in df.iterrows():
     prerequisites = row["prerequisite_skills"]
 
     if pd.notna(row["problem_1"]):
-        pivoted_data.append({"problem": str(row["problem_1"]), "skill_id": skill_id, "prerequisites": prerequisites})
+        pivoted_data.append(
+            {
+                "problem": str(row["problem_1"]),
+                "skill_id": skill_id,
+                "prerequisites": prerequisites,
+            },
+        )
 
     if pd.notna(row["problem_2"]):
-        pivoted_data.append({"problem": str(row["problem_2"]), "skill_id": skill_id, "prerequisites": prerequisites})
+        pivoted_data.append(
+            {
+                "problem": str(row["problem_2"]),
+                "skill_id": skill_id,
+                "prerequisites": prerequisites,
+            },
+        )
 
 pivoted_df = pd.DataFrame(pivoted_data)
 pivoted_df.to_csv("data/florida-doe/tagged-practice-items.csv", index=False)
