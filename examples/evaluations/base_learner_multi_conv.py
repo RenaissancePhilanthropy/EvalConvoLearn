@@ -30,11 +30,8 @@ _OUTPUT_DIR = Path("outputs/base_learner/multi_conv")
 
 def main() -> None:
     sdk = EvalConvoLearn()
-    skill_space = sdk.load_skill_space(Path("data/florida-doe/skill-space.csv"))
-    items = sdk.load_practice_items(
-        Path("data/florida-doe/tagged-practice-items-with-responses.csv"),
-        skill_space,
-    )
+    skill_space = sdk.load_skill_space()
+    items = sdk.load_practice_items(skill_space)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H-%M-%S")
     output_dir = _OUTPUT_DIR / timestamp

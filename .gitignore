@@ -158,8 +158,11 @@ data/checkpoints/
 *.db
 *.sqlite3
 
-# tests/data
+# tests/data and outputs
 data/**/*.jsonl
 data/**/*.json
 data/**/*.csv
+outputs/**/*.jsonl
+outputs/**/*.json
+outputs/**/*.csv
 *.txt

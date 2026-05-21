@@ -6,8 +6,10 @@ import json
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from ..models.tutor import TutorResponse
+if TYPE_CHECKING:
+    from ..models.tutor import TutorResponse
 
 logger = logging.getLogger(__name__)
 

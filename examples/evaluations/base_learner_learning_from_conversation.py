@@ -24,18 +24,12 @@ from base_learner.conversation_history_learner import ConversationHistoryLearner
 from evalconvolearn import EvalConvoLearn, EvaluationConfig, LearnerEvalConfig
 
 _OUTPUT_DIR = Path("outputs/base_learner/learning_from_conversation")
-_MOCK_RESPONSES_CSV = Path(
-    "data/florida-doe/tagged-practice-items-with-responses.csv",
-)
 
 
 def main() -> None:
     sdk = EvalConvoLearn()
-    skill_space = sdk.load_skill_space(Path("data/florida-doe/skill-space.csv"))
-    items = sdk.load_practice_items(
-        Path("data/florida-doe/tagged-practice-items-with-responses.csv"),
-        skill_space,
-    )
+    skill_space = sdk.load_skill_space()
+    items = sdk.load_practice_items(skill_space)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H-%M-%S")
     output_dir = _OUTPUT_DIR / timestamp
@@ -47,13 +41,13 @@ def main() -> None:
             LearnerEvalConfig(
                 learner_class=BinarySkillLearner,
                 label=f"binary_skill_{timestamp}",
-                mastered_skills=["MA.6.NSO.2.1"],
+                mastered_skills=["MA.6.NSO.1.2"],
                 benchmarks=["BaseLineLearningFromConversationBenchmark"],
             ),
             LearnerEvalConfig(
                 learner_class=ConversationHistoryLearner,
                 label=f"conv_history_{timestamp}",
-                mastered_skills=["MA.6.NSO.2.1"],
+                mastered_skills=["MA.6.NSO.1.2"],
                 init_knowledge_kwargs={
                     "knowledge_cache_dir": str(output_dir / "knowledge_cache"),
                 },
@@ -63,9 +57,9 @@ def main() -> None:
         benchmarks=["BaseLineLearningFromConversationBenchmark"],
         benchmarks_custom_args={
             "BaseLineLearningFromConversationBenchmark": {
-                "mocked_tutor_responses_csv_path": _MOCK_RESPONSES_CSV,
-                "runs": 2,
-                "max_items": 5,
+                "mocked_tutor_responses_csv_path": sdk.config.tagged_practice_items_with_responses_csv,
+                "runs": 1,
+                "max_items": 3,
             },
         },
     )

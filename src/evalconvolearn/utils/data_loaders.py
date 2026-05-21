@@ -60,7 +60,7 @@ def get_tutor_responses_csv_path(
     """
     if mocked_tutor_responses_csv_path:
         return Path(mocked_tutor_responses_csv_path)
-    return get_florida_doe_data_dir() / "practice-items-with-mock-responses.csv"
+    return get_florida_doe_data_dir() / "tagged-practice-items-with-responses.csv"
 
 
 def load_tutor_responses_mapping(

@@ -1,5 +1,5 @@
 """Unified evaluation runner — runs all benchmark x learner combinations and
-produces an aggregated summary JSON in ``data/evaluations/multi_learner_evals/``.
+produces an aggregated summary JSON in ``outputs/``.
 
 The script orchestrates (in order):
 
@@ -58,7 +58,6 @@ logger.setLevel(logging.INFO)
 # Paths
 # ---------------------------------------------------------------------------
 DATA_ROOT = PROJECT_ROOT / "data" / "florida-doe"
-BL_ITEMS_PATH = DATA_ROOT / "tagged-practice-items-with-responses.csv"
 MULTI_LEARNER_EVALS_DIR = PROJECT_ROOT / "outputs" / "multi_learner_evals"
 BL_KNOWLEDGE_CACHE_DIR = (
     PROJECT_ROOT / "outputs" / "base_learner" / "learning_from_conversation"
@@ -272,7 +271,10 @@ SKILL_ID_TO_TRIPLETS: dict[str, list[dict]] = {
 # ====================================================================== #
 
 
-def build_base_learner_configs(timestamp: str) -> tuple[EvaluationConfig, ...]:
+def build_base_learner_configs(
+    timestamp: str,
+    bl_items_path: Path,
+) -> tuple[EvaluationConfig, ...]:
     """Return EvaluationConfigs for base-learner benchmarks."""
     common_cache_kw = {
         "knowledge_cache_dir": BL_KNOWLEDGE_CACHE_DIR / f"knowledge_cache_{timestamp}",
@@ -293,7 +295,7 @@ def build_base_learner_configs(timestamp: str) -> tuple[EvaluationConfig, ...]:
         label=f"bl_lfc_{timestamp}",
         benchmarks_custom_args={
             "BaseLineLearningFromConversationBenchmark": {
-                "mocked_tutor_responses_csv_path": BL_ITEMS_PATH,
+                "mocked_tutor_responses_csv_path": bl_items_path,
                 "runs": RUNS_PER_SCENARIO,
                 "max_items": MAX_ITEMS,
             },
@@ -390,22 +392,19 @@ def main() -> None:
     sdk = EvalConvoLearn()
 
     # ── Load shared data ─────────────────────────────────────────────── #
-    skill_space = sdk.load_skill_space(DATA_ROOT / "skill-space.csv")
+    skill_space = sdk.load_skill_space()
     logger.info("Skill space loaded: %d skills", len(skill_space.skills))
 
     fl_items = sdk.load_practice_items(
-        DATA_ROOT / "tagged-practice-items-with-answers-and-incorrect.csv",
         skill_space,
+        DATA_ROOT / "tagged-practice-items-with-answers-and-incorrect.csv",
     )
     logger.info("FlexLearner practice items: %d", len(fl_items.items))
 
-    oversampled_items = sdk.load_practice_items(
-        DATA_ROOT / "oversampled_items" / "new_items_10_all.csv",
-        skill_space,
-    )
+    oversampled_items = sdk.load_oversampled_items(skill_space)
     logger.info("Oversampled items: %d", len(oversampled_items.items))
 
-    bl_items = sdk.load_practice_items(BL_ITEMS_PATH, skill_space)
+    bl_items = sdk.load_practice_items(skill_space)
     logger.info("Base-learner practice items: %d", len(bl_items.items))
 
     all_results: list[EvaluationResults] = []
@@ -425,7 +424,10 @@ def main() -> None:
 
     # ── 2. Base-learner benchmarks ───────────────────────────────────── #
     logger.info("  PHASE 2: Base-learner benchmarks")
-    for ec in build_base_learner_configs(timestamp):
+    for ec in build_base_learner_configs(
+        timestamp,
+        sdk.config.tagged_practice_items_with_responses_csv,
+    ):
         ec.output_dir = evalset_dir / "base_learner"
         logger.info("Running: %s", ec.label)
         try:

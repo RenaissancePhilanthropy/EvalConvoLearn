@@ -30,7 +30,7 @@ src/evalconvolearn/
 └── utils/              # LLM grading, metrics, alignment matrices, data loaders
 ```
 
-**Three benchmark families:**
+**Four benchmark families:**
 
 | Benchmark | What it measures |
 |---|---|
@@ -46,6 +46,23 @@ pip install evalconvolearn
 # or with uv:
 uv add evalconvolearn
 ```
+
+## Environment variables
+
+Copy `.env-example` to `.env` and fill in the values:
+
+```bash
+cp .env-example .env
+```
+
+| Variable | Required | Description |
+|---|---|---|
+| `OPENAI_API_KEY` | Yes | OpenAI API key used for generating tutor responses and LLM-based grading |
+| `SKILL_SPACE_PATH` | No | Path to the skill-space CSV — lets you call `sdk.load_skill_space()` with no argument |
+| `TAGGED_PRACTICE_ITEMS_WITH_RESPONSES_CSV` | No | Path to the tagged practice-items CSV — lets you call `sdk.load_practice_items(skill_space)` with no argument |
+| `OVERSAMPLED_ITEMS_CSV` | No | Path to the oversampled items CSV — lets you call `sdk.load_oversampled_items(skill_space)` with no argument |
+
+The path variables are optional: if not set, you can pass explicit paths directly to `sdk.load_skill_space(path)`, `sdk.load_practice_items(skill_space, path)`, and `sdk.load_oversampled_items(skill_space, path)`.
 
 ## Usage
 

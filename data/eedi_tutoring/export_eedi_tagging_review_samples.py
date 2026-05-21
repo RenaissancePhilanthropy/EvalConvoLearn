@@ -7,13 +7,13 @@ file and writes three markdown review packets:
 - learner talk-move and error-type review
 
 Each packet is saved into the corresponding review folder under
-`data/evaluations/source_data/eedi_tutoring/`.
+`data/eedi_tutoring/`.
 
 Example:
 -------
 ```bash
-uv run python data/evaluations/source_data/eedi_tutoring/export_eedi_tagging_review_samples.py \
-  --input data/evaluations/source_data/eedi_tutoring/all_conversations_with_metrics.jsonl \
+uv run python data/eedi_tutoring/export_eedi_tagging_review_samples.py \
+  --input data/eedi_tutoring/all_conversations_with_metrics.jsonl \
   --sample-size 20
 ```
 
@@ -56,7 +56,7 @@ def setup_logging(log_level: str) -> None:
 
 
 def _parse_args() -> argparse.Namespace:
-    # uv run python data/evaluations/source_data/eedi_tutoring/export_eedi_tagging_review_samples.py --input data/evaluations/source_data/eedi_tutoring/conversations_sampled_v2_metrics.jsonl --sample-size 30
+    # uv run python data/eedi_tutoring/export_eedi_tagging_review_samples.py --input data/eedi_tutoring/conversations_sampled_v2_metrics.jsonl --sample-size 30
     parser = argparse.ArgumentParser(
         description="Sample metrics-tagged Eedi conversations and export markdown review packets.",
     )

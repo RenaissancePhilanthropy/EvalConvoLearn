@@ -44,10 +44,7 @@ logging.basicConfig(
 # --------------------------------------------------------------------------- #
 
 _CONVERSATIONS_JSONL = Path(
-    "data/evaluations/source_data/tutoring_conversations.jsonl",
-)
-_PRACTICE_ITEMS_CSV = Path(
-    "data/florida-doe/oversampled_items/oversampled-items-x10.csv",
+    "data/eedi_tutoring/conversations_sampled_v3_metrics.jsonl",
 )
 _OUTPUT_BASE = Path("outputs/dataset_fitted_evals")
 
@@ -158,8 +155,8 @@ def main(run_id: str | None = None) -> None:
         run_id = datetime.now().strftime("%Y%m%d_%H-%M-%S")
 
     sdk = EvalConvoLearn()
-    skill_space = sdk.load_skill_space(Path("data/florida-doe/skill-space.csv"))
-    practice_item_pool = sdk.load_practice_items(_PRACTICE_ITEMS_CSV, skill_space)
+    skill_space = sdk.load_skill_space()
+    practice_item_pool = sdk.load_oversampled_items(skill_space)
 
     for (
         (learner_class, learner_short_name, base_eval_dir),

@@ -1,19 +1,11 @@
 import abc
 from typing import Any, Literal
 
-import httpx
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
+from ..core.base_tutor import BaseTutor
 from ..models.practice_item import PracticeItem, PracticeItemPool
-
-
-class LearnerResponse(BaseModel):
-    """Response schema returned by the learner HTTP endpoint."""
-
-    dialogue_history: Any = ""
-    conversation_ended: Any = ""
-    session_id: str = ""
 
 
 class TutorResponse(BaseModel):
@@ -285,15 +277,13 @@ class HumanInterfaceTutorStrategy(BaseTutorStrategy):
         """Cleanup resources if any."""
 
 
-class Tutor(BaseModel):
-    """Possible tutor implementations:
+class Tutor(BaseModel, BaseTutor):
+    """Tutor implementations:
     - an LLM simulating a tutor with characteristics (helpful or not)
     - an interface for a human tutor or external tutoring system
 
-    Allows to interact with the learner over HTTP or only return tutor responses for an external client or a platform running a learner instance directly.
-
-    Provides a teach_learner method that runs a full conversation with a learner on a practice item.
-    Returns the conversation metadata.
+    Only supports response_interaction_mode='return_only' in this version.
+    HTTP interaction mode is reserved for future use.
     """
 
     id: str  # unique identifier for the tutor
@@ -311,7 +301,7 @@ class Tutor(BaseModel):
     response_interaction_mode: Literal[
         "http",
         "return_only",
-    ] = "http"  # whether the tutor makes API calls to the learner or just returns responses
+    ] = "return_only"  # reserved: only 'return_only' is implemented
     include_answer_in_context: bool = (
         False  # whether to include the practice item answer in tutor context/metadata
     )
@@ -319,17 +309,18 @@ class Tutor(BaseModel):
     _strategy: BaseTutorStrategy | None = (
         None  # internal strategy instance derived from tutor_type
     )
-    _learner_http_details: dict | None = (
-        None  # internal details of the response (e.g., API call info)
-    )
 
     def __init__(self, **data):
         """Initialize Tutor."""
         super().__init__(**data)
+        if self.response_interaction_mode == "http":
+            msg = (
+                "HTTP interaction mode is not implemented in this version. "
+                "Use response_interaction_mode='return_only'."
+            )
+            raise NotImplementedError(msg)
         self._strategy = None
         self.initialize_tutor_characteristics()
-        if self.response_interaction_mode == "http":
-            self.initialize_http_details()
 
     def initialize_tutor_characteristics(self):
         """Initialize tutor characteristics with defaults if not provided."""
@@ -339,22 +330,6 @@ class Tutor(BaseModel):
         for key, value in defaults.items():
             # set default characteristics if not already provided
             self.tutor_characteristics.setdefault(key, value)
-
-    def initialize_http_details(self):
-        """Initialize response details."""
-        # handle headers authorization here if needed for communication with learner API
-
-        self._learner_http_details = {
-            "base_url": "http://localhost:8000/student_pool/",
-            "start_teaching_endpoint": "start_teaching_learner",
-            "continue_teaching_endpoint": "teaching_response",
-            "start_assessing_endpoint": "start_assessing_learner",
-            "continue_assessing_endpoint": "assessing_response",
-            "http_client": httpx.AsyncClient(
-                timeout=30.0,
-                headers={"Content-Type": "application/json"},
-            ),
-        }
 
     # tutor loading information
     def load_practice_item_pool(self, item_pool: PracticeItemPool):
@@ -386,12 +361,6 @@ class Tutor(BaseModel):
 
         self._strategy.initialize()
 
-    # TODO - understand how we need to handle get_teaching_first_message
-    # this method is not used in all tutor instances, most of times only
-    # the get_teacher_followup_message will be used to generate a response
-    # and the conversation starts directly from the conversation graph
-    # right now this is not being used because we removed student_pool.session
-    # --> this should be adapted to support clean api access for tutors
     async def get_teaching_first_message(
         self,
         practice_item: PracticeItem | None = None,
@@ -436,235 +405,16 @@ class Tutor(BaseModel):
             **kwargs,
         )
 
-    def get_learner_response(
-        self,
-        api_endpoint: str,
-        json_payload: dict,
-    ) -> LearnerResponse:
-        """Make an API call to the learner endpoint and get the response."""
-        if not self._learner_http_details:
-            raise ValueError(
-                "Learner HTTP details not initialized. Ensure response_interaction_mode is 'http'.",
-            )
-
-        url = self._learner_http_details["base_url"] + api_endpoint
-
-        with self._learner_http_details["http_client"] as client:
-            response = client.post(url, json=json_payload)
-            response.raise_for_status()
-            data = response.json()
-
-        # TODO Can validate model directly by passing the response json to model
-        return LearnerResponse(
-            dialogue_history=data.get("dialogue_history", ""),
-            conversation_ended=data.get("conversation_ended", ""),
-            session_id=data.get("session_id", ""),
-        )
-
-    # external method to start teaching a learner
-    async def start_teaching(
-        self,
-        student_pool_id: str,  # required
-        learner_id: str,  # required - the learner to be taught
-        session_id: (
-            str | None
-        ) = None,  # not required - session id can be passed or not to learner
-        practice_item: (
-            PracticeItem | None
-        ) = None,  # Would sample a practice item if not provided
-        initial_message: (
-            str | None
-        ) = None,  # optional initial message to start the conversation
-        learner_context: (
-            dict | None
-        ) = None,  # tutor implementation may use the learner context to adapt teaching
-    ) -> TutorResponse | LearnerResponse:
-        """Start a teaching conversation with a learner on a practice item.
-        Either:
-        -Send the 'initial message' provided to the learner and return the learner response.
-        -Return the tutor response if response_interaction_mode is 'return_only'.
-        -Get and send the tutor's response to the learner and return the learner response.
-        """
-        if (
-            self.response_interaction_mode == "return_only"
-            and self.tutor_type == "human_interface"
-        ):
-            raise ValueError("Human interface tutor cannot use Return Only mode.")
-
-        if self.tutor_type == "human_interface":
-            # human interface: require an initial message to start the conversation
-            # Should send the initial message to the learner
-            assert (
-                initial_message
-            ), "Human interface tutor requires an initial message to start the conversation."
-            assert self._learner_http_details, "Learner HTTP details not initialized."
-        else:
-            # Other types of tutors: generate the first message
-            tutor_response = await self.get_teaching_first_message(
-                practice_item=practice_item,
-                learner_context=learner_context,
-            )
-            initial_message = tutor_response.message
-            if self.response_interaction_mode == "return_only":
-                # just return the tutor response - will be used in the interface to display to human tutor and query the learner.
-                return tutor_response
-        # else, send the tutor response to the learner and get the learner response
-        assert self._learner_http_details, "Learner HTTP details not initialized."
-        payload = {
-            "student_pool_id": student_pool_id,
-            "learner_id": learner_id,
-            "session_id": session_id,
-            "initial_message": initial_message,
-            "practice_item": practice_item.text if practice_item else "",
-            "skills": practice_item.associated_skills if practice_item else [],
-            "practice_item_answer": practice_item.get_answer() if practice_item else "",
-        }
-        return await self.get_learner_response(
-            api_endpoint=self._learner_http_details["start_teaching_endpoint"],
-            json_payload=payload,
-        )
-
-    def continue_teaching(
-        self,
-        student_pool_id: str,  # required
-        learner_id: str,
-        session_id: str,  # required for continued session teaching
-        provided_response: str | None = None,
-        dialogue_history: list[dict] | None = None,
-        **kwargs,
-    ) -> TutorResponse | LearnerResponse:
-        """Continue a teaching conversation with a learner using tutor's response."""
-        if (
-            self.response_interaction_mode == "return_only"
-            and self.tutor_type == "human_interface"
-        ):
-            raise ValueError("Human interface tutor cannot use Return Only mode.")
-
-        if self.tutor_type == "human_interface":
-            assert (
-                provided_response
-            ), "Human interface tutor requires a provided response message to continue the conversation."
-        else:
-            # Other types of tutors: generate the follow up tutor message
-            tutor_response = self.get_teacher_followup_message(
-                dialogue_history=dialogue_history,
-                **kwargs,
-            )
-            provided_response = tutor_response.message
-            # even if the tutor determines that the conversation should end, we do nothing here for now.
-            if self.response_interaction_mode == "return_only":
-                return tutor_response
-
-        new_dialogue_history = dialogue_history or []
-        new_dialogue_history.append({"role": "assistant", "content": provided_response})
-
-        assert self._learner_http_details, "Learner HTTP details not initialized."
-        payload = {
-            "student_pool_id": student_pool_id,
-            "learner_id": learner_id,
-            "session_id": session_id,
-            "dialogue_history": new_dialogue_history,
-        }
-        return self.get_learner_response(
-            api_endpoint=self._learner_http_details["continue_teaching_endpoint"],
-            json_payload=payload,
-        )
-
-    async def teach_learner(
-        self,
-        student_pool_id: str,
-        learner_id: str,
-        session_id: str | None = None,
-        practice_item: PracticeItem | None = None,
-        learner_context: dict | None = None,
-    ):
-        """Run a full teaching conversation with a learner on a practice item.
-        This should happen only if:
-        -the tutor_type is not 'human_interface'
-        -the response_interaction_mode is set to 'http' and not 'return_only'
-
-        Should return the dialogue history and learner response metadata.
-        """
-        assert (
-            self.response_interaction_mode == "http"
-        ), "teach_learner only works in HTTP interaction mode."
-        assert (
-            self.tutor_type != "human_interface"
-        ), "teach_learner does not work with human interface tutor. Use the methods: start_teaching and continue_teaching"
-
-        # Start teaching
-        learner_response = await self.start_teaching(
-            student_pool_id=student_pool_id,
-            learner_id=learner_id,
-            session_id=session_id,
-            practice_item=practice_item,
-            learner_context=learner_context,
-        )
-        # Should retrieve the session id and the dialogue history from the learner response metadata
-        # To be changed based on the implementation of the learner response schema
-        dialogue_history = learner_response.get("dialogue_history", [])
-
-        # session id can come either from the initial session id or from learner session response
-        session_id = session_id or learner_response.get("session_id", None)
-
-        assert session_id, "No session id provided for continued session teaching."
-        assert (
-            len(dialogue_history) > 0
-        ), "Dialogue history not found or empty in learner response metadata."
-
-        # continue teaching until done (get conversation_ended from learner response metadata)
-        done = False
-        while not done:
-            learner_response = await self.continue_teaching(
-                student_pool_id=student_pool_id,
-                learner_id=learner_id,
-                session_id=session_id,
-                dialogue_history=dialogue_history,
-            )
-            # Update dialogue history
-            dialogue_history = learner_response.get(
-                "dialogue_history",
-                dialogue_history,
-            )
-            done = learner_response.get("conversation_ended", False)
-
-        # save or return the conversation information
-        return {
-            "student_pool_id": student_pool_id,
-            "learner_id": learner_id,
-            "session_id": session_id,
-            "dialogue_history": dialogue_history,
-            "learner_response": learner_response,
-        }
-
     def generate_response(
         self,
         dialogue_history: list[dict],
         **kwargs,
     ) -> TutorResponse:
         """Generate a tutor response based on dialogue history."""
-        student_pool_id = kwargs.get("student_pool_id", "")
-        learner_id = kwargs.get("learner_id", "")
-        session_id = kwargs.get("session_id")
-
-        assert (
-            student_pool_id or self.response_interaction_mode == "return_only"
-        ), "student_pool_id is required to generate tutor response when not using return_only mode."
-        assert (
-            learner_id or self.response_interaction_mode == "return_only"
-        ), "learner_id is required to generate tutor response when not using return_only mode."
-        assert (
-            session_id or self.response_interaction_mode == "return_only"
-        ), "session_id is required to generate tutor response when not using return_only mode."
-
-        tutor_response = self.continue_teaching(
-            student_pool_id=student_pool_id,
-            learner_id=learner_id,
-            session_id=session_id,
+        if self.tutor_type == "human_interface":
+            msg = "generate_response does not work with human interface tutor."
+            raise ValueError(msg)
+        return self.get_teacher_followup_message(
             dialogue_history=dialogue_history,
-            should_check_conversation_end=kwargs.get(
-                "should_check_conversation_end",
-                False,
-            ),
+            **kwargs,
         )
-        return tutor_response

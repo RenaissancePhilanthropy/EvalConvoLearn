@@ -15,6 +15,17 @@ The main entry point for the library. Provides high-level methods to:
 
 Pydantic settings model that controls global defaults (data directories, conversation turn limits, evaluation output paths). Pass an instance to `EvalConvoLearn(config=...)` to override defaults.
 
+The following environment variables are read automatically via `pydantic-settings`:
+
+| Variable | Config field | Description |
+|---|---|---|
+| `OPENAI_API_KEY` | — | Required by LLM-based grading and tutor-response generation |
+| `SKILL_SPACE_PATH` | `skill_space_path` | Default path for `sdk.load_skill_space()` |
+| `TAGGED_PRACTICE_ITEMS_WITH_RESPONSES_CSV` | `tagged_practice_items_with_responses_csv` | Default path for `sdk.load_practice_items()` |
+| `OVERSAMPLED_ITEMS_CSV` | `oversampled_items_csv` | Default path for `sdk.load_oversampled_items()` |
+
+Copy `.env-example` at the repo root to `.env` and fill in the values before running any scripts or benchmarks.
+
 ## `base_learner.py` — `BaseLearner`
 
 Abstract base class for **black-box** learner simulations. Subclass this when your learner has its own internal knowledge representation and you want the framework to evaluate it without controlling its prompts.

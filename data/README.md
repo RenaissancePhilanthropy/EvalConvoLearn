@@ -20,7 +20,7 @@ Shared utility scripts.
 
 Scripts for extracting, tagging, and reviewing real Eedi tutoring conversations.
 
-- **`extract_tag_store_eedi_tutoring_conversations.py`** — Full pipeline: loads the Eedi HuggingFace dataset, filters dialogues by learner-turn ratio, samples tutors, uses an LLM to align each question to the Florida DOE skill space, infers learning outcomes, and saves matched conversations as JSONL. Key functions: `select_sampled_dialogues`, `tag_question_to_skill`, `infer_learning_outcome`, `save_jsonl`.
+- **`extract_tag_store_eedi_tutoring_conversations.py`** — Full pipeline: loads the [Eedi HuggingFace dataset](https://huggingface.co/datasets/Eedi/Question-Anchored-Tutoring-Dialogues-2k/viewer/dq-question-metadata), filters dialogues by learner-turn ratio, samples tutors, uses an LLM to align each question to the Florida DOE skill space, infers learning outcomes, and saves matched conversations as JSONL. Key functions: `select_sampled_dialogues`, `tag_question_to_skill`, `infer_learning_outcome`, `save_jsonl`.
 
 - **`tag_eedi_sampled_convs_with_metrics.py`** — Reads the output JSONL from the script above and adds `conversation_metrics` (error types, talk moves, turn length) computed by `compute_conversation_metrics` from the benchmark module. Key function: `main`.
 

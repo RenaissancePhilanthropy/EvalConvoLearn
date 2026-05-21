@@ -25,9 +25,9 @@ This script:
 Example:
 -------
 ```bash
-uv run python data/evaluations/source_data/eedi_tutoring/extract_tag_store_eedi_tutoring_conversations.py \
+uv run python data/eedi_tutoring/extract_tag_store_eedi_tutoring_conversations.py \
   --sample-size 100 \
-  --output data/evaluations/source_data/eedi_tutoring/all_conversations.jsonl
+  --output data/eedi_tutoring/all_conversations.jsonl
 ```
 
 """

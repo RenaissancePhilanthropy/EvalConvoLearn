@@ -79,12 +79,8 @@ def main() -> None:
     """Run PlacementTestBenchmark for all three FlexLearner implementations."""
     sdk = EvalConvoLearn()
 
-    data_root = Path("data") / "florida-doe"
-    skill_space = sdk.load_skill_space(data_root / "skill-space.csv")
-    items = sdk.load_practice_items(
-        data_root / "tagged-practice-items-with-responses.csv",
-        skill_space,
-    )
+    skill_space = sdk.load_skill_space()
+    items = sdk.load_practice_items(skill_space)
 
     eval_config = EvaluationConfig(
         output_dir=Path("outputs/flexlearner/placement_test"),

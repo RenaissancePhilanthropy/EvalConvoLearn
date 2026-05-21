@@ -15,9 +15,9 @@ The added metrics include:
 Example:
 -------
 ```bash
-uv run python data/evaluations/source_data/eedi_tutoring/tag_eedi_sampled_convs_with_metrics.py \
-  --input data/evaluations/source_data/eedi_tutoring/all_conversations.jsonl \
-  --output data/evaluations/source_data/eedi_tutoring/all_conversations_with_metrics.jsonl
+uv run python data/eedi_tutoring/tag_eedi_sampled_convs_with_metrics.py \
+  --input data/eedi_tutoring/all_conversations.jsonl \
+  --output data/eedi_tutoring/all_conversations_with_metrics.jsonl
 ```
 
 """

@@ -18,8 +18,8 @@ def main():
 
     skill_space = sdk.load_skill_space(Path("data") / "florida-doe" / "skill-space.csv")
     items = sdk.load_practice_items(
-        Path("data") / "florida-doe" / "tagged-practice-items-with-responses.csv",
         skill_space,
+        Path("data") / "florida-doe" / "tagged-practice-items-with-responses.csv",
     )
 
     # Option 1: Create new pool (timestamp appended automatically)

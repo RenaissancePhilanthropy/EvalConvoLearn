@@ -24,14 +24,18 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import random
 from pathlib import Path
 
 import pandas as pd
+from dotenv import load_dotenv
 from simulation_utils import generate_learning_sequence_summary
 
 from evalconvolearn import EvalConvoLearn
 from evalconvolearn.models.tutor import Tutor
+
+load_dotenv()
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -46,7 +50,12 @@ logger = logging.getLogger(__name__)
 # Paths (relative to the repo root so the script works from any cwd)
 # ---------------------------------------------------------------------------
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-SKILL_SPACE_CSV = REPO_ROOT / "data" / "florida-doe" / "skill-space.csv"
+SKILL_SPACE_CSV = Path(
+    os.getenv(
+        "SKILL_SPACE_PATH",
+        REPO_ROOT / "data" / "florida-doe" / "skill-space.csv",
+    ),
+)
 PRACTICE_ITEMS_CSV = (
     REPO_ROOT / "data" / "florida-doe" / "tagged-practice-items-with-responses.csv"
 )

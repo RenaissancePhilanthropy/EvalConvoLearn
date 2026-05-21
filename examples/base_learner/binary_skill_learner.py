@@ -23,6 +23,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from evalconvolearn import BaseLearner
+from evalconvolearn.models.tutor import Tutor
 
 logger = logging.getLogger(__name__)
 
@@ -347,4 +348,11 @@ class BinarySkillLearner(BaseLearner):
     # ------------------------------------------------------------------ #
 
     def set_up_initialization_tutor(self) -> None:
-        pass
+        self._default_skill_initialization_tutor = Tutor(
+            id="initialization_tutor",
+            tutor_type="llm",
+            tutor_characteristics={"helpfulness": True},
+            practice_item_pool=None,
+            response_interaction_mode="return_only",
+        )
+        self._default_skill_initialization_tutor.initialize_strategy()

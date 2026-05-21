@@ -53,11 +53,11 @@ class EvalConvoLearn:
         >>> from evalconvolearn import EvalConvoLearn
         >>> sdk = EvalConvoLearn()
         >>>
-        >>> # Load skill space
-        >>> skill_space = sdk.load_skill_space("data/skills.csv")
+        >>> # Load skill space (path from SKILL_SPACE_PATH env var or explicit)
+        >>> skill_space = sdk.load_skill_space()
         >>>
-        >>> # Load practice items
-        >>> items = sdk.load_practice_items("data/items.json", skill_space)
+        >>> # Load practice items (path from TAGGED_PRACTICE_ITEMS_WITH_RESPONSES_CSV env var or explicit)
+        >>> items = sdk.load_practice_items(skill_space)
         >>>
         >>> # Create learner pool
         >>> pool = sdk.create_learner_pool("pool_1", skill_space)
@@ -76,20 +76,58 @@ class EvalConvoLearn:
         self._conversation_service = ConversationService(self.config)
         self._pool_storage = FileStudentPoolStorage()
 
-    def load_skill_space(self, csv_path: str | Path) -> SkillSpace:
-        """Load skill space from CSV file."""
+    def load_skill_space(self, csv_path: str | Path | None = None) -> SkillSpace:
+        """Load skill space from CSV file.
+
+        If ``csv_path`` is omitted the value of the ``SKILL_SPACE_PATH`` env var
+        (exposed via :attr:`~EvalConvoLearnConfig.skill_space_path`) is used.
+        """
+        path = csv_path or self.config.skill_space_path
+        if path is None:
+            raise ValueError(
+                "csv_path must be provided or SKILL_SPACE_PATH env var must be set.",
+            )
         skill_space = SkillSpace()
-        skill_space.load_skills_from_csv(str(csv_path))
+        skill_space.load_skills_from_csv(str(path))
         return skill_space
 
     def load_practice_items(
         self,
-        json_path: str | Path,
         skill_space: SkillSpace,
+        json_path: str | Path | None = None,
     ) -> PracticeItemPool:
-        """Load practice items from JSON file."""
+        """Load tagged practice items from CSV file.
+
+        If ``json_path`` is omitted the value of the
+        ``TAGGED_PRACTICE_ITEMS_WITH_RESPONSES_CSV`` env var is used.
+        """
+        path = json_path or self.config.tagged_practice_items_with_responses_csv
+        if path is None:
+            raise ValueError(
+                "json_path must be provided or "
+                "TAGGED_PRACTICE_ITEMS_WITH_RESPONSES_CSV env var must be set.",
+            )
         pool = PracticeItemPool(items=[], skill_space=skill_space)
-        pool.load_items_from_csv(str(json_path))
+        pool.load_items_from_csv(str(path))
+        return pool
+
+    def load_oversampled_items(
+        self,
+        skill_space: SkillSpace,
+        csv_path: str | Path | None = None,
+    ) -> PracticeItemPool:
+        """Load oversampled practice items from CSV file.
+
+        If ``csv_path`` is omitted the value of the ``OVERSAMPLED_ITEMS_CSV``
+        env var is used.
+        """
+        path = csv_path or self.config.oversampled_items_csv
+        if path is None:
+            raise ValueError(
+                "csv_path must be provided or OVERSAMPLED_ITEMS_CSV env var must be set.",
+            )
+        pool = PracticeItemPool(items=[], skill_space=skill_space)
+        pool.load_items_from_csv(str(path))
         return pool
 
     def create_learner_pool(
@@ -361,7 +399,7 @@ class EvalConvoLearn:
             ...     results.append(sdk.run_base_learner_evaluation(ec, skill_space, bl_items))
             >>> evalset = sdk.aggregate_results(results, eval_configs=my_fl_configs + my_bl_configs)
             >>> evalset.print_summary()
-            >>> evalset.save("data/evaluations/my_run")
+            >>> evalset.save("outputs/my_run")
 
         """
         return build_evalset_results(
