@@ -2,47 +2,11 @@
 
 An open-source evaluation library to assess the quality of learner simulations in conversational tutoring systems.
 
-Learner simulations are AI agents that model how a student learns and responds during tutoring sessions. EvalConvoLearn provides standardized benchmarks to measure whether a simulated learner behaves realistically: placing accurately by prior knowledge, demonstrating skill acquisition after tutoring, and progressing coherently across multiple sessions.
+A learner simulation is any custom code that can respond to tutor questions during problem-solving tutoring sessions. It may be a simple LLM-based response, a more complex learner implementation using knowledge retrieval to control learning, or a middleware to an externally hosted software. The simulation should subclass our existing `BaseLearner` class (see below).
 
-## Code structure
+EvalConvoLearn provides standardized benchmarks to measure whether a learner simulation behaves as expected: responding accurately from a given prior knowledge, demonstrating skill acquisition after tutoring, or progressing coherently across multiple sessions.
 
-```
-src/evalconvolearn/
-├── core/               # Core abstractions and SDK entry point
-│   ├── sdk.py          # EvalConvoLearn — main interface
-│   ├── base_learner.py # BaseLearner (ABC) — black-box learner interface
-│   ├── flexlearner.py  # FlexLearner (ABC) — transparent, skill-list-based learner
-│   ├── base_tutor.py   # BaseTutor (ABC) — tutor interface
-│   └── config.py       # Global configuration
-├── models/             # Pydantic data models
-│   ├── skill.py        # Skill, SkillSpace (DAG with prerequisite validation)
-│   ├── practice_item.py        # PracticeItem, PracticeItemPool
-│   ├── binary_skills_flexlearner.py  # BinarySkillsFlexLearner, StudentPool
-│   ├── tutor.py                # LLMTutorStrategy, HumanInterfaceTutorStrategy
-│   ├── evaluation.py           # LearnerEvalConfig, EvaluationConfig
-│   └── evaluation_results.py   # EvaluationResults, EvalSetResults
-├── benchmarks/         # Evaluation benchmarks
-│   ├── base_learners/          # Black-box learner benchmarks
-│   ├── flexlearners/           # Transparent learner benchmarks
-│   └── realistic_benchmarks_from_conversation_data/  # Dataset-fitted benchmarks
-├── services/           # Orchestration layer (conversations, evaluations, sessions)
-├── storage/            # Persistence (CSV-based StudentPool storage)
-└── utils/              # LLM grading, metrics, alignment matrices, data loaders
-
-data/                   # Scripts for generating and managing datasets (not raw data files)
-├── florida-doe/        # Florida DOE BEST curriculum: skill space CSV and data-cleaning scripts
-├── eedi_tutoring/      # Pipeline for tagging and reviewing real Eedi tutoring conversations
-├── simulated_datasets/ # Script for simulating learner-tutor conversation datasets with FlexLearner
-└── data_utils/         # Shared helpers (e.g. adding mock tutor/learner responses)
-
-examples/               # End-to-end usage examples
-├── base_learner/       # BaseLearner implementations (binary-skill, conversation-history)
-├── flexlearner/        # FlexLearner implementations (binary, history, knowledge-graph)
-├── evaluations/        # Evaluation scripts for all four benchmark families
-├── paper_results/      # Scripts and notebook to reproduce the paper's evaluation results
-└── learner_utils/      # Utilities: learner pool creation, manual tutor session
-
-```
+More importantly, it can evaluate the realism of learner simulations by comparing their responses to real student responses extracted from real tutoring conversations datasets.
 
 **Four benchmark families:**
 
@@ -238,6 +202,47 @@ Each learner is initialized with a random sample of skills (prerequisites are au
 
 See [examples/](examples/) for complete implementations including binary-skill, conversation-history, and knowledge-graph variants.
 
+
+## Code structure
+
+```
+src/evalconvolearn/
+├── core/               # Core abstractions and SDK entry point
+│   ├── sdk.py          # EvalConvoLearn — main interface
+│   ├── base_learner.py # BaseLearner (ABC) — black-box learner interface
+│   ├── flexlearner.py  # FlexLearner (ABC) — transparent, skill-list-based learner
+│   ├── base_tutor.py   # BaseTutor (ABC) — tutor interface
+│   └── config.py       # Global configuration
+├── models/             # Pydantic data models
+│   ├── skill.py        # Skill, SkillSpace (DAG with prerequisite validation)
+│   ├── practice_item.py        # PracticeItem, PracticeItemPool
+│   ├── binary_skills_flexlearner.py  # BinarySkillsFlexLearner, StudentPool
+│   ├── tutor.py                # LLMTutorStrategy, HumanInterfaceTutorStrategy
+│   ├── evaluation.py           # LearnerEvalConfig, EvaluationConfig
+│   └── evaluation_results.py   # EvaluationResults, EvalSetResults
+├── benchmarks/         # Evaluation benchmarks
+│   ├── base_learners/          # Black-box learner benchmarks
+│   ├── flexlearners/           # Transparent learner benchmarks
+│   └── realistic_benchmarks_from_conversation_data/  # Dataset-fitted benchmarks
+├── services/           # Orchestration layer (conversations, evaluations, sessions)
+├── storage/            # Persistence (CSV-based StudentPool storage)
+└── utils/              # LLM grading, metrics, alignment matrices, data loaders
+
+data/                   # Scripts for generating and managing datasets (not raw data files)
+├── florida-doe/        # Florida DOE BEST curriculum: skill space CSV and data-cleaning scripts
+├── eedi_tutoring/      # Pipeline for tagging and reviewing real Eedi tutoring conversations
+├── simulated_datasets/ # Script for simulating learner-tutor conversation datasets with FlexLearner
+└── data_utils/         # Shared helpers (e.g. adding mock tutor/learner responses)
+
+examples/               # End-to-end usage examples
+├── base_learner/       # BaseLearner implementations (binary-skill, conversation-history)
+├── flexlearner/        # FlexLearner implementations (binary, history, knowledge-graph)
+├── evaluations/        # Evaluation scripts for all four benchmark families
+├── paper_results/      # Scripts and notebook to reproduce the paper's evaluation results
+└── learner_utils/      # Utilities: learner pool creation, manual tutor session
+
+```
+
 ## Reproducing paper results
 
 `examples/paper_results/` contains two files that reproduce the evaluation results from the paper.
@@ -289,10 +294,6 @@ Useful flags:
 - Skip slow tests: `pytest -m "not slow"`
 - Skip integration tests: `pytest -m "not integration"`
 - Run with coverage: `pytest --cov=src/evalconvolearn --cov-report=term-missing`
-
-## TODO
-
-- **Claude model support for FlexLearner**: `FlexLearner` and its subclasses (`BinarySkillsFlexLearner`, etc.) currently hardcode `gpt-4.1-mini` for internal LLM calls in `learns_from_conversation` and `answer_practice_item`. To support Claude models here, these methods need to accept a `model` parameter and route through `make_client` from `src/evalconvolearn/utils/llm_client.py`.
 
 ## Contributors
 
