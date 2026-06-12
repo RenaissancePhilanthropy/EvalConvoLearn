@@ -39,7 +39,9 @@ examples/               # End-to-end usage examples
 ├── base_learner/       # BaseLearner implementations (binary-skill, conversation-history)
 ├── flexlearner/        # FlexLearner implementations (binary, history, knowledge-graph)
 ├── evaluations/        # Evaluation scripts for all four benchmark families
+├── paper_results/      # Scripts and notebook to reproduce the paper's evaluation results
 └── learner_utils/      # Utilities: learner pool creation, manual tutor session
+
 ```
 
 **Four benchmark families:**
@@ -70,9 +72,11 @@ cp .env-example .env
 | Variable | Required | Description |
 |---|---|---|
 | `OPENAI_API_KEY` | Yes | OpenAI API key used for generating tutor responses and LLM-based grading |
+| `ANTHROPIC_API_KEY` | No | Anthropic API key — required when using Claude models (e.g. `claude-sonnet-4-6`) as the tutor or evaluator |
 | `SKILL_SPACE_PATH` | No | Path to the skill-space CSV — lets you call `sdk.load_skill_space()` with no argument |
 | `TAGGED_PRACTICE_ITEMS_WITH_RESPONSES_CSV` | No | Path to the tagged practice-items CSV — lets you call `sdk.load_practice_items(skill_space)` with no argument |
 | `OVERSAMPLED_ITEMS_CSV` | No | Path to the oversampled items CSV — lets you call `sdk.load_oversampled_items(skill_space)` with no argument |
+| `EEDI_SAMPLED_CONVERSATIONS_PATH` | No | Path to the Eedi conversations JSONL file — used by `examples/paper_results/eedi_fitted_learner_evals.py` |
 
 The path variables are optional: if not set, you can pass explicit paths directly to `sdk.load_skill_space(path)`, `sdk.load_practice_items(skill_space, path)`, and `sdk.load_oversampled_items(skill_space, path)`.
 
@@ -144,12 +148,16 @@ Optional but useful fields: `learner_id`, `tutor_id`, `correct_answer`, `item_sk
 
 #### Step 2 — Pivot into a practice-item pool
 
+> **Pre-generated file included:** `data/florida-doe/tagged-practice-items.csv` ships with the repo. Skip this step unless you modified `skill-space.csv`.
+
 ```bash
 python data/florida-doe/data_cleaning/skills-to-practice-items.py
 # outputs: data/florida-doe/tagged-practice-items.csv
 ```
 
 #### Step 3 — Generate tutor responses
+
+> **Pre-generated file included:** `data/florida-doe/tagged-practice-items-with-responses.csv` ships with the repo. Skip this step unless you want to regenerate responses with a different model.
 
 ```bash
 python data/florida-doe/data_cleaning/generate_tutor_responses.py \
@@ -229,6 +237,24 @@ run_simulation(
 Each learner is initialized with a random sample of skills (prerequisites are automatically closed), assigned a persona and a set of misconceptions, then runs `nb_conversations` sessions against a helpful (90%) or unhelpful (10%) LLM tutor. Sessions are persisted to disk under the pool directory, and a Markdown learning-sequence summary is written alongside them.
 
 See [examples/](examples/) for complete implementations including binary-skill, conversation-history, and knowledge-graph variants.
+
+## Reproducing paper results
+
+`examples/paper_results/` contains two files that reproduce the evaluation results from the paper.
+
+**`eedi_fitted_learner_evals.py`** — runs the full evaluation suite on the Eedi dataset-fitted benchmark, sweeping all combinations of learner type (`BinarySkillLearner`, `ConversationHistoryLearner`) and model pair defined in `_MODEL_COMBINATIONS`. Set `EEDI_SAMPLED_CONVERSATIONS_PATH` in your `.env` to point to your Eedi conversations JSONL file, then:
+
+```bash
+python examples/paper_results/eedi_fitted_learner_evals.py
+```
+
+Outputs land in `outputs/dataset_fitted_evals/<run_label>__<timestamp>/`, one subdirectory per configuration.
+
+**`analyze_evals_results.ipynb`** — notebook for analyzing the output of the eval script. Point `EVAL_OUTPUT_DIR` at your output directory and run the cells to get results tables, score plots, LaTeX tables (Tables 1 and 2 from the paper), per-scenario breakdowns, a conversation browser, and distribution plots.
+
+### Claude model support
+
+`src/evalconvolearn/utils/llm_client.py` exposes a `make_client(model)` helper that returns an OpenAI-compatible client for both OpenAI and Claude models. Pass a Claude model name (e.g. `"claude-sonnet-4-6"`) and the client automatically routes requests to the Anthropic API using `ANTHROPIC_API_KEY`. This is used by the tutor and evaluator components — set `ANTHROPIC_API_KEY` in your `.env` when running with Claude models.
 
 ## Running tests
 

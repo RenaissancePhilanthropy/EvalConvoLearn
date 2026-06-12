@@ -2,7 +2,7 @@
 
 Source data and generation scripts for EvalConvoLearn.
 
-> **Note:** Pre-generated CSV files (practice items, tutor responses) are not distributed with this repository. Follow the data preparation steps in the main [README](../README.md) to generate them locally.
+> **Note:** Example CSV files (practice items, tutor responses) are distributed with this repository. Follow the data preparation steps in the main [README](../README.md) to update them locally.
 
 ---
 
@@ -18,7 +18,7 @@ Shared utility scripts.
 
 ## `eedi_tutoring/`
 
-Scripts for extracting, tagging, and reviewing real Eedi tutoring conversations.
+Scripts for extracting, tagging, and reviewing real Eedi tutoring conversations to showcase EvalConvoLearn learner evaluations on an existing, open-source dataset.
 
 - **`extract_tag_store_eedi_tutoring_conversations.py`** — Full pipeline: loads the [Eedi HuggingFace dataset](https://huggingface.co/datasets/Eedi/Question-Anchored-Tutoring-Dialogues-2k/viewer/dq-question-metadata), filters dialogues by learner-turn ratio, samples tutors, uses an LLM to align each question to the Florida DOE skill space, infers learning outcomes, and saves matched conversations as JSONL. Key functions: `select_sampled_dialogues`, `tag_question_to_skill`, `infer_learning_outcome`, `save_jsonl`.
 
@@ -40,7 +40,7 @@ Scripts for extracting, tagging, and reviewing real Eedi tutoring conversations.
 
 #### `oversampled_items/`
 
-- **`oversampled-items-x10.csv`** *(generated — not distributed)* — Expanded practice-item pool with roughly 10× more problems per skill than `skill-space.csv`. Columns: `problem`, `answer`, `incorrect_answer_1`, `incorrect_answer_2`, `incorrect_answer_3`, `skill_id`, `prerequisite_skills`, `generated`. Must be created by prompting an LLM to generate new problems that are similar in style and difficulty to the seed examples in `skill-space.csv`, covering the same skill and misconception space. Set `generated=true` on all synthesized rows to distinguish them from hand-authored items.
+- **`oversampled-items-x10.csv`** *(not distributed)* — Example placeholder for expanded practice-item pool with ~10× more problems per skill than `skill-space.csv`. Columns: `problem`, `answer`, `incorrect_answer_1`, `incorrect_answer_2`, `incorrect_answer_3`, `skill_id`, `prerequisite_skills`, `generated`. Can be created by generating new problems that are similar to the examples in `skill-space.csv`, covering the same skill and misconception space. Set `generated=true` on all synthesized rows to distinguish them from hand-authored items.
 
 ### `data_cleaning/`
 
@@ -65,7 +65,7 @@ python data/florida-doe/data_cleaning/generate_tutor_responses.py \
 
 ## `simulated_datasets/`
 
-Scripts for generating synthetic FlexLearner conversation datasets.
+Scripts for generating synthetic FlexLearner conversation datasets in order to test EvalConvoLearn on simulated tutoring conversations (to control for generated learner features).
 
 - **`simulate_flexlearner_dataset.py`** — Runs end-to-end simulation: creates a learner pool, assigns random skill sets (with prerequisite closure), samples personas and misconceptions, then runs N conversations per learner against a helpful (90%) or unhelpful (10%) LLM tutor. Saves sessions to a pool directory and writes a learning-sequence summary. Key functions: `run_simulation`, `build_initial_skill_set`.
 
