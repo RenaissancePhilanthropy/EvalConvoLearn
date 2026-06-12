@@ -224,14 +224,46 @@ class BaseLearner(ABC, BaseModel):
     # ------------------------------------------------------------------ #
 
     def has_skill(self, skill: str | Skill, **kwargs: Any) -> bool:
-        """Return ``True`` if the learner masters *skill*, ``False`` otherwise.
+        """Return ``True`` if the learner has mastered *skill*, ``False`` otherwise.
 
-        This is the single ground-truth query used by the evaluation
-        framework to decide whether the learner is *supposed to* answer a
-        problem correctly.  For ``FlexLearner`` subclasses, this is a direct look-up in the mastered-skills list.
-        For black-box learners it involves creating an aligned skill assessment, a mapping between the skill space and the knowledge configuration, or any sort of automatic evaluation.
+        This is the primary knowledge-probing method used by benchmarks.
+        For ``FlexLearner`` subclasses it is typically a direct look-up in the
+        mastered-skills list.  For black-box learners the default implementation
+        runs a short LLM-graded assessment against practice items aligned with
+        the skill.
 
-        Can be ignored/passed by a subclass, but then benchmarks will need to call run 'upskilling' conversations to set up the learner ready for the benchmark scenario.
+        Subclasses may override this with any logic appropriate to their internal
+        knowledge representation (e.g. a vector-store query, a KG traversal).
+        If not overridden, the default implementation requires ``practice_item_pool``
+        in ``kwargs`` (and optionally ``tutor``).
+
+        Parameters
+        ----------
+        skill:
+            A :class:`~evalconvolearn.models.skill.Skill` instance or a skill-ID
+            string (e.g. ``"MA.6.NSO.1.1"``).
+        **kwargs:
+            Optional keys consumed by the default implementation:
+
+            - ``practice_item_pool`` (:class:`~evalconvolearn.models.practice_item.PracticeItemPool`) —
+              **Required** by the default implementation. Pool from which
+              assessment items are drawn.
+            - ``tutor`` (:class:`~evalconvolearn.core.base_tutor.BaseTutor`) —
+              tutor used to run multi-turn assessments; falls back to
+              ``self._default_skill_initialization_tutor`` when omitted.
+            - ``n_problems`` (``int``, default ``3``) — number of practice items
+              to assess before deciding mastery.
+            - ``correctness_threshold`` (``float``, default ``0.7``) — fraction of
+              items that must be answered correctly to count as mastered.
+            - ``max_assessment_turns`` (``int``, default ``1``) — turns per item.
+            - ``reuse_seen_problems`` (``bool``, default ``True``) — whether to
+              fall back to already-seen items when the unseen pool is exhausted.
+
+        Returns
+        -------
+        bool
+            ``True`` if the learner is considered to have mastered *skill*.
+
         """
         n_problems = kwargs.get("n_problems", 3)
         correctness_threshold = kwargs.get("correctness_threshold", 0.7)
@@ -488,28 +520,54 @@ class BaseLearner(ABC, BaseModel):
         conversation_history: list[dict],
         **kwargs,
     ) -> dict[str, Any]:
-        """Start or continue a conversation and return the learner's response.
+        """Produce the learner's next reply and optionally signal conversation end.
 
-        The learner is expected to keep engaging with the tutor until it
-        decides the conversation has ended (e.g. the confusion was resolved
-        or the problem was solved).
-        When ``is_conversation_ended`` is
-        ``True`` the framework assumes the learner has attempted to update its knowledge
-        from the exchange.
+        Called by the framework on every turn of a tutoring session.  The
+        implementation should inspect the full conversation history, generate
+        the learner's response (e.g. by prompting an LLM or drawing from an
+        internal state), and return a dict with at minimum:
 
-        This method assumes the learner's knowledge can be updated from the conversation
-        depending on the internal knowledge representation.
+        - ``"response"`` (``str``) — the learner's reply text.
+        - ``"is_conversation_ended"`` (``bool``) — ``True`` when the learner
+          decides the exchange is complete (problem solved, confusion cleared,
+          or the session limit reached). Setting this to ``True`` is equivalent
+          to calling :meth:`end_conversation` from within this method; the
+          framework will **not** call ``end_conversation`` again if this flag
+          is already set.
 
-        When starting a conversation, conversation_history should contain
-        the initial problem presentation from the tutor, format:
-        [
-            {"role": "assistant", "content": "..."},
-        ]
-        Be careful to treat 'assistant' as the tutor and 'user' as the learner in the conversation history format.
-        When continuing a conversation and prompting an LLM to act as a learner, make sure to
-        convert the conversation history to get an LLM response as the 'user' = learner.
+        **Conversation history format** — ``conversation_history`` is a list
+        of dicts with ``"role"`` and ``"content"`` keys.  The role convention
+        is ``"assistant"`` for the tutor and ``"user"`` for the learner::
 
-        Returns {'response': str, 'is_conversation_ended': bool}
+            [
+                {"role": "assistant", "content": "Solve the following problem: ..."},
+                {"role": "user",      "content": "I think the answer is ..."},
+                {"role": "assistant", "content": "Not quite — think about ..."},
+            ]
+
+        When forwarding this history to an LLM that must reply *as the
+        learner*, swap the roles so the model sees itself as the ``"assistant"``
+        and the tutor as the ``"user"``, or use a system prompt that explicitly
+        defines the learner persona.
+
+        Parameters
+        ----------
+        conversation_history:
+            Full conversation so far, starting with the tutor's opening
+            problem presentation.  ``"assistant"`` = tutor; ``"user"`` = learner.
+        **kwargs:
+            Optional hints passed by the framework:
+
+            - ``should_session_end`` (``bool``, default ``False``) — signals that
+              the framework intends to end the session after this turn.  The
+              implementation may use this to produce a closing remark or to
+              trigger any end-of-session learning update.
+
+        Returns
+        -------
+        dict
+            ``{"response": str, "is_conversation_ended": bool}``
+
         """
         ...
 
@@ -519,17 +577,44 @@ class BaseLearner(ABC, BaseModel):
         conversation_history: list[dict],
         **kwargs,
     ) -> None:
-        """Explicitly end the current conversation.
+        """Finalize the session and update the learner's internal knowledge state.
 
-        This forces the conversation to end (after N turns; or when only 1 response from the learner is needed with learning).
-        Useful to end the conversation and allow learners to learn from the interaction.
+        This is **the primary learning hook**: it is called by the framework
+        at the end of every tutoring session, either because the learner set
+        ``"is_conversation_ended": True`` in :meth:`start_or_continue_conversation`,
+        or because the maximum number of turns was reached.
 
-        conversation_history format: assistant = tutor ; user = learner
-        [
-            {"role": "assistant", "content": "..."},
-            {"role": "user", "content": "..."},
-            ...
-        ]
+        Implementations **must** perform any knowledge updates here — e.g.
+        appending the conversation to a history store, updating a skill vector,
+        writing KG triples, or summarizing the exchange with an LLM.  The
+        learner will **not** learn from a conversation if ``end_conversation``
+        is a no-op.
+
+        The framework guarantees that this method is called exactly once per
+        session.  It is *not* called if ``is_conversation_ended`` was already
+        set during :meth:`start_or_continue_conversation` and the implementation
+        handled the update internally in that method.
+
+        Parameters
+        ----------
+        conversation_history:
+            Complete conversation, including the tutor's opening message and
+            all subsequent turns.  Role convention: ``"assistant"`` = tutor,
+            ``"user"`` = learner::
+
+                [
+                    {"role": "assistant", "content": "Solve the following problem: ..."},
+                    {"role": "user",      "content": "I think the answer is 3/4."},
+                    {"role": "assistant", "content": "Correct! Here is why ..."},
+                ]
+
+        **kwargs:
+            Optional hints passed by the framework:
+
+            - ``should_session_end`` (``bool``) — always ``True`` when the
+              framework calls this method; kept for symmetry with
+              :meth:`start_or_continue_conversation`.
+
         """
         ...
 
@@ -537,7 +622,7 @@ class BaseLearner(ABC, BaseModel):
     #  Learner upskilling from sequence of skill-aligned conversations
     # ------------------------------------------------------------------ #
 
-    def set_up_initialization_tutor(self) -> None:
+    def set_up_initialization_tutor(self, **kwargs) -> None:
         """Override to set ``self._default_skill_initialization_tutor`` before evaluation."""
 
     def upskill_learner_to_skills(

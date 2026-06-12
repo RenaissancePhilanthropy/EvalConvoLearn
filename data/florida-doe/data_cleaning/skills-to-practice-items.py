@@ -6,7 +6,7 @@ one per problem, with skill_id and prerequisites carried over.
 
 import pandas as pd
 
-df = pd.read_csv("data/florida-doe/skill-space.csv")
+df = pd.read_csv("data/florida-doe/skill-space.csv", engine="python")
 
 pivoted_data = []
 for _, row in df.iterrows():

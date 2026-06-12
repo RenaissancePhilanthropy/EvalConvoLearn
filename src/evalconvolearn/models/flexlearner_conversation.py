@@ -1004,7 +1004,6 @@ class ConversationGraph(BaseModel):
                     command = Command(resume=tutor_message)
 
                 # stream conversation with command (either start or resume)
-                # TODO what happens if tries to resume a non-existing session?
                 for chunk in compiled_graph.stream(
                     command,
                     config,

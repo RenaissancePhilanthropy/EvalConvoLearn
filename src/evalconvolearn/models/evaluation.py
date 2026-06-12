@@ -258,6 +258,11 @@ class EvaluationConfig(BaseModel):
             "used in logs and summary reports."
         ),
     )
+    num_threads: int = Field(
+        default=4,
+        ge=1,
+        description="Maximum number of benchmark evaluations to run concurrently.",
+    )
 
     model_config = {"arbitrary_types_allowed": True}
 

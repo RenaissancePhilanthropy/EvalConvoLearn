@@ -1,0 +1,29 @@
+problem,skill_id,prerequisites
+"""A recipe calls for 2.5 cups of flour. Jake measured 2 3/4 cups. Did he measure enough flour? Plot both values on a number line and explain how you know.""",MA.6.NSO.1.1,
+"""Mia says that -5, 0.75, and 8/3 are all rational numbers, but her classmate says only 8/3 qualifies because it is written as a fraction. Who is correct? Justify your answer and explain what makes a number rational.""",MA.6.NSO.1.1,
+"""A submarine is at -180 feet and a helicopter is hovering at 320 feet. Represent both positions on a vertical number line. What does 0 represent in this context, and how do the two values compare?""",MA.6.NSO.1.2,MA.6.NSO.1.1
+"""During the morning the temperature was -4°F. By afternoon it rose to 11°F. Plot both temperatures on a number line and compare them.""",MA.6.NSO.1.2,MA.6.NSO.1.1
+"""A diver is 23.5 feet below the surface and a bird is flying 23.5 feet above the water. What is the absolute value of each position? What do these values tell you about each one's distance from the water's surface?""",MA.6.NSO.1.3,MA.6.NSO.1.2
+"""What is the value of |-9.4|? What is the value of |3/4|? Explain what each result represents on a number line.""",MA.6.NSO.1.3,MA.6.NSO.1.2
+"""Mount Olympus has an elevation of 2,917 meters above sea level. The Dead Sea has an elevation of about 430 meters below sea level. Which location has a greater distance from sea level? By how many meters?""",MA.6.NSO.1.4,MA.6.NSO.1.3
+"""A stock's price was $32 on Monday. By Tuesday it had changed by $4.50. By Wednesday it had changed by another amount. If the Wednesday price is $29.75, what was the change from Tuesday to Wednesday? Is there more than one possible answer? Explain.""",MA.6.NSO.1.4,MA.6.NSO.1.3
+"""A school store sells pencils for $0.35 each. The store collected $24.85 in pencil sales on Monday. How many pencils were sold?""",MA.6.NSO.2.1,
+"""A car travels at an average speed of 58.4 miles per hour. How far will it travel in 3.25 hours?""",MA.6.NSO.2.1,
+"""A baker uses 2 1/4 cups of sugar for each batch of cookies. If she has 9 cups of sugar, how many full batches can she make?""",MA.6.NSO.2.2,
+"""What is the value of the expression 4/5 × 3 3/8?""",MA.6.NSO.2.2,
+"""Marcus has $45.00. He buys a book for $12.75 and a notebook for $3.50. He wants to use the remaining money to buy pens that cost $0.85 each. What is the greatest number of pens Marcus can buy?""",MA.6.NSO.2.3,
+"""A hiking trail is 6 3/4 miles long. The hiking club completed 2 1/2 miles on Saturday and 1 3/4 miles on Sunday. How many miles of the trail do they still need to complete?""",MA.6.NSO.2.3,
+"""Two buses leave the same station. Bus A departs every 15 minutes and Bus B departs every 12 minutes. If both depart at 8:00 a.m., at what time will they next depart together?""",MA.6.NSO.3.1,
+"""A florist has 48 roses and 36 carnations. She wants to create identical bouquets using all the flowers with no leftovers. What is the greatest number of bouquets she can make? How many of each flower will be in each bouquet?""",MA.6.NSO.3.1,
+"""Rewrite 56 + 84 in the form a(b + c) where a is the greatest common factor of 56 and 84 and b and c are whole numbers. Verify that your expression equals 56 + 84.""",MA.6.NSO.3.2,MA.6.NSO.3.1
+"""Use the distributive property to rewrite 45 + 60 as a product of the GCF and a sum of two whole numbers.""",MA.6.NSO.3.2,MA.6.NSO.3.1
+"""Evaluate (-3)^4 and -3^4. Are they equal? Explain the difference in meaning between the two expressions.""",MA.6.NSO.3.3,"MA.6.NSO.2.1, MA.6.NSO.2.2, MA.6.NSO.4.2"
+"""Is 2^5 equal to 5^2? Evaluate both expressions and explain your reasoning.""",MA.6.NSO.3.3,"MA.6.NSO.2.1, MA.6.NSO.2.2, MA.6.NSO.4.2"
+"""List all the factors of 36. Then write 36 as a product of its prime factors using exponents.""",MA.6.NSO.3.4,"MA.6.NSO.3.1, MA.6.NSO.3.2, MA.6.NSO.3.3"
+"""Express 120 as a product of its prime factors with natural number exponents.""",MA.6.NSO.3.4,"MA.6.NSO.3.1, MA.6.NSO.3.2, MA.6.NSO.3.3"
+"""What fraction and decimal are equivalent to 65%?""",MA.6.NSO.3.5,MA.6.NSO.1.1
+"""Complete the following statement: 3/8 can be written as the decimal _______ and is equivalent to ______ percent.""",MA.6.NSO.3.5,MA.6.NSO.1.1
+"""Evaluate -13 + 7 - (-4).""",MA.6.NSO.4.1,"MA.6.NSO.1.1, MA.6.NSO.1.2, MA.6.NSO.1.3, MA.6.NSO.1.4"
+"""A football team gained 6 yards on the first play, lost 8 yards on the second play, and gained 3 yards on the third play. What is the team's total yardage after the three plays?""",MA.6.NSO.4.1,"MA.6.NSO.1.1, MA.6.NSO.1.2, MA.6.NSO.1.3, MA.6.NSO.1.4"
+"""What is the value of (-4) × (-9)?""",MA.6.NSO.4.2,"MA.6.NSO.1.1, MA.6.NSO.1.2, MA.6.NSO.1.3, MA.6.NSO.1.4"
+"""A submarine descends at a rate of 15 meters per minute. Write a multiplication expression to represent its depth after 6 minutes starting from sea level, then evaluate it.""",MA.6.NSO.4.2,"MA.6.NSO.1.1, MA.6.NSO.1.2, MA.6.NSO.1.3, MA.6.NSO.1.4"

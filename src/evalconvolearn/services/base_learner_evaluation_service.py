@@ -151,6 +151,12 @@ class BaseLearnerEvaluationService:
                     if self.eval_config.benchmarks_custom_args
                     else {}
                 )
+                # Inject num_threads so benchmarks can parallelise internally;
+                # explicit per-benchmark overrides take precedence.
+                benchmark_extra_args = {
+                    "num_threads": self.eval_config.num_threads,
+                    **benchmark_extra_args,
+                }
                 kwargs: dict[str, Any] = {
                     "skill_space": self.skill_space,
                     "practice_item_pool": self.practice_item_pool,

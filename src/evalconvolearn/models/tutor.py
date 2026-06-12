@@ -4,6 +4,8 @@ from typing import Any, Literal
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
+from evalconvolearn.utils.llm_client import make_client
+
 from ..core.base_tutor import BaseTutor
 from ..models.practice_item import PracticeItem, PracticeItemPool
 
@@ -84,10 +86,9 @@ class LLMTutorStrategy(BaseTutorStrategy):
     def initialize(self) -> None:
         """Initialize LLM client."""
         # from openai import AsyncOpenAI
-        from openai import OpenAI
 
         load_dotenv()
-        self.client = OpenAI()
+        self.client = make_client(self.model)
 
     def generate_strategy_response(
         self,
@@ -115,7 +116,10 @@ class LLMTutorStrategy(BaseTutorStrategy):
             tutor_charact += "\nEnd your response by asking the learner to now show their solution to the problem."
 
         if kwargs.get("should_check_conversation_end", False):
-            tutor_charact += "\nEnd the conversation only if the learner has completely understood and solved all aspects of the problem."
+            tutor_charact += (
+                "\nEnd the conversation only if the learner has completely understood and solved all aspects of the problem."
+                "\nIf the learner solved the initial problem but asks "
+            )
             response_model = LLMTutorResponseWithEndCheck
 
         # Build few-shot block from tutor_generation_metadata if provided
@@ -337,11 +341,15 @@ class Tutor(BaseModel, BaseTutor):
         # extra validation as needed
         self.practice_item_pool = item_pool
 
-    def initialize_strategy(self, **strategy_kwargs):
+    def initialize_strategy(
+        self,
+        model: str = "gpt-4.1-mini",
+        **strategy_kwargs: object,
+    ):
         """Initialize strategy based on tutor_type, an async operation because can be an external API call."""
         if self.tutor_type == "llm":
             self._strategy = LLMTutorStrategy(
-                model="gpt-4.1-mini",
+                model=model,
                 tutor_characteristics=self.tutor_characteristics,
                 include_answer_in_context=self.include_answer_in_context,
                 **strategy_kwargs,

@@ -56,7 +56,6 @@ def setup_logging(log_level: str) -> None:
 
 
 def _parse_args() -> argparse.Namespace:
-    # uv run python data/eedi_tutoring/export_eedi_tagging_review_samples.py --input data/eedi_tutoring/conversations_sampled_v2_metrics.jsonl --sample-size 30
     parser = argparse.ArgumentParser(
         description="Sample metrics-tagged Eedi conversations and export markdown review packets.",
     )

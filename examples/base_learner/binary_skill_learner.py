@@ -17,13 +17,16 @@ import hashlib
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from dotenv import load_dotenv
-from openai import OpenAI
 
 from evalconvolearn import BaseLearner
 from evalconvolearn.models.tutor import Tutor
+from evalconvolearn.utils.llm_client import make_client
+
+if TYPE_CHECKING:
+    from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +107,7 @@ class BinarySkillLearner(BaseLearner):
     def _get_client(self) -> OpenAI:
         if self._client is None:
             load_dotenv()
-            self._client = OpenAI()
+            self._client = make_client(self.model)
         return self._client
 
     def _skill_catalogue_str(self) -> str:
@@ -169,6 +172,10 @@ class BinarySkillLearner(BaseLearner):
         model_override = kwargs.pop("model", None)
         if model_override is not None:
             self.model = model_override
+
+        tutor_model = kwargs.pop("tutor_model", None)
+        if tutor_model is not None:
+            self.set_up_initialization_tutor(model=tutor_model)
 
         cache_dir = kwargs.pop("knowledge_cache_dir", None)
         if cache_dir is not None:
@@ -347,7 +354,7 @@ class BinarySkillLearner(BaseLearner):
     #  Initialization tutor (set up by the benchmark)
     # ------------------------------------------------------------------ #
 
-    def set_up_initialization_tutor(self) -> None:
+    def set_up_initialization_tutor(self, **kwargs) -> None:
         self._default_skill_initialization_tutor = Tutor(
             id="initialization_tutor",
             tutor_type="llm",
@@ -355,4 +362,4 @@ class BinarySkillLearner(BaseLearner):
             practice_item_pool=None,
             response_interaction_mode="return_only",
         )
-        self._default_skill_initialization_tutor.initialize_strategy()
+        self._default_skill_initialization_tutor.initialize_strategy(**kwargs)

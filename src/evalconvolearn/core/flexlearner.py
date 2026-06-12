@@ -212,7 +212,7 @@ class FlexLearner(BaseLearner, ABC):
             "Override this method to set up the learner's initial knowledge state from a list of skill IDs.",
         )
 
-    def set_up_initialization_tutor(self) -> BaseTutor | None:
+    def set_up_initialization_tutor(self, **kwargs) -> BaseTutor | None:
         pass
 
     @abstractmethod

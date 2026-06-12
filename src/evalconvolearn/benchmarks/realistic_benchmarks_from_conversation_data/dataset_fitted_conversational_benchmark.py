@@ -10,6 +10,7 @@ import random
 import re
 import uuid
 from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,8 @@ from evalconvolearn.benchmarks.base_learners.base_learner_benchmarks import (
 )
 from evalconvolearn.benchmarks.realistic_benchmarks_from_conversation_data.dataset_fitted_benchmark_utils import (
     DEFAULT_CONVERSATIONS_JSONL,
+    compute_aggregate_scores,
+    compute_standard_errors,
     counts_to_distribution,
     distribution_distance,
     extract_learner_turns,
@@ -62,7 +65,7 @@ ERROR_BUCKETS = ["zero", "one", "multiple"]
 BINARY_BUCKETS = ["no", "yes"]
 
 # Weight of learning-behavior vs conversational metrics in the final composite score
-EVAL_CONVO_LEARN_ALPHA = 0.6
+EVAL_CONVO_LEARN_ALPHA = 0.5
 WORD_PATTERN = re.compile(r"\b[\w'-]+\b")
 
 ERROR_TYPE_FIELDS = {
@@ -346,12 +349,17 @@ class DatasetFittedConversationalBenchmark:
         self.test_run_id = f"dataset_fitted_conversational_{uuid.uuid4().hex[:8]}"
 
         self.benchmark_extra_args = benchmark_extra_args or {}
-        self.conversations_jsonl_path = Path(
-            self.benchmark_extra_args.get(
-                "conversations_jsonl_path",
-                DEFAULT_CONVERSATIONS_JSONL,
-            ),
+        _jsonl_path_raw = self.benchmark_extra_args.get(
+            "conversations_jsonl_path",
+            DEFAULT_CONVERSATIONS_JSONL,
         )
+        if _jsonl_path_raw is None:
+            message = (
+                "DatasetFittedConversationalBenchmark requires 'conversations_jsonl_path' "
+                "in benchmark_extra_args pointing to your real tutoring conversations JSONL file."
+            )
+            raise ValueError(message)
+        self.conversations_jsonl_path = Path(_jsonl_path_raw)
         self.max_skills = int(self.benchmark_extra_args.get("max_skills", 5))
         self.max_records_per_skill_mastery = int(
             self.benchmark_extra_args.get("max_records_per_skill_mastery", 5),
@@ -372,8 +380,12 @@ class DatasetFittedConversationalBenchmark:
             self.benchmark_extra_args.get("require_both_mastery_groups", True),
         )
         self.random_seed = int(self.benchmark_extra_args.get("random_seed", 0))
+        self.num_threads = int(self.benchmark_extra_args.get("num_threads", 4))
+        self.tutor_model = str(
+            self.benchmark_extra_args.get("tutor_model", "gpt-4.1-mini"),
+        )
         self.classification_model = str(
-            self.benchmark_extra_args.get("classification_model", "gpt-4.1-mini"),
+            self.benchmark_extra_args.get("classification_model", self.tutor_model),
         )
         self.num_example_conversations_for_tutor_response_generation = int(
             self.benchmark_extra_args.get(
@@ -411,7 +423,7 @@ class DatasetFittedConversationalBenchmark:
             practice_item_pool=self.practice_item_pool,
             response_interaction_mode="return_only",
         )
-        self.tutor.initialize_strategy()
+        self.tutor.initialize_strategy(model=self.tutor_model)
 
     @staticmethod
     def compute_structured_metrics(output_file: Path) -> dict:
@@ -456,6 +468,7 @@ class DatasetFittedConversationalBenchmark:
             )
             .get("conv_score"),
             "aggregate_scores": summary.get("aggregate_scores"),
+            "standard_errors": summary.get("standard_errors"),
         }
 
     def run_all_evaluations(self) -> Path:
@@ -498,18 +511,35 @@ class DatasetFittedConversationalBenchmark:
         selected_records_path = (
             output_dir / "dataset_fitted_conversational_selected_real_records.jsonl"
         )
+        real_metric_records_path = (
+            output_dir / "dataset_fitted_conversational_real_metric_records.jsonl"
+        )
 
         with selected_records_path.open("w", encoding="utf-8") as file_handle:
             for record in sampled_records:
                 file_handle.write(json.dumps(record) + "\n")
 
-        sampled_results: list[dict[str, Any]] = []
+        with real_metric_records_path.open("w", encoding="utf-8") as file_handle:
+            for record in real_metric_records:
+                file_handle.write(json.dumps(record) + "\n")
+
+        tasks = [
+            (record, run_idx)
+            for record in sampled_records
+            for run_idx in range(self.runs)
+        ]
+        with ThreadPoolExecutor(max_workers=self.num_threads) as executor:
+            futures = [
+                executor.submit(self._evaluate_record, record=record, run_idx=run_idx)
+                for record, run_idx in tasks
+            ]
+            sampled_results: list[dict[str, Any]] = [
+                future.result() for future in as_completed(futures)
+            ]
+
         with details_path.open("w", encoding="utf-8") as file_handle:
-            for record in sampled_records:
-                for run_idx in range(self.runs):
-                    result = self._evaluate_record(record=record, run_idx=run_idx)
-                    sampled_results.append(result)
-                    file_handle.write(json.dumps(result) + "\n")
+            for result in sampled_results:
+                file_handle.write(json.dumps(result) + "\n")
 
         summary = self._build_summary(
             selected_skills=selected_skills,
@@ -520,6 +550,7 @@ class DatasetFittedConversationalBenchmark:
             sampling_stats=sampling_stats,
             details_path=details_path,
             selected_records_path=selected_records_path,
+            real_metric_records_path=real_metric_records_path,
         )
         summary_path = output_dir / "dataset_fitted_conversational_summary.json"
         with summary_path.open("w", encoding="utf-8") as file_handle:
@@ -898,6 +929,7 @@ class DatasetFittedConversationalBenchmark:
             tutor_generation_metadata=(
                 tutor_generation_metadata if tutor_generation_metadata else None
             ),
+            classification_model=self.classification_model,
         )
         dialogue_history = [
             {
@@ -957,10 +989,12 @@ class DatasetFittedConversationalBenchmark:
             )
         except ValueError:
             logger.warning(
-                "Could not find practice item in pool matching text '%s', using fallback for session_id=%s",
+                "Could not find practice item in pool matching text '%s', creating a new practice item for session_id=%s",
                 record["practice_item_text"],
                 record.get("session_id", ""),
             )
+            # If the record from the dataset doesn't match any item in the practice item pool:
+            # create a fallback PracticeItem with minimal info for this run
             practice_item = PracticeItem(
                 text=record["practice_item_text"],
                 associated_skills=[record["target_skill_id"]],
@@ -1197,440 +1231,11 @@ class DatasetFittedConversationalBenchmark:
         real_records: list[dict[str, Any]],
         successful_results: list[dict[str, Any]],
     ) -> dict[str, Any]:
-        """Compute the composite EvalConvoLearn score and all intermediate steps.
-
-        Returns a dict with:
-        - ``scenario_weights``: occurrence frequency of each scenario in real data
-        - ``learning_behavior``: MAE on solution rate per skill×scenario, macro-averaged
-          across skills per scenario, then weighted across scenarios
-        - ``conversational``: per-scenario distances.  Continuous metrics (W1) are
-          normalized by the global real-data range.  Categorical metrics (JSD) pool
-          conversations within a scenario across skills; each conversation is first
-          converted to a normalized distribution, then distributions are averaged.
-        - ``eval_convo_learn``: final composite score
-        """
-        from collections import Counter as _Counter
-
-        # ---- Scenario weights from ALL real records ----
-        scenario_counts: dict[str, int] = _Counter(
-            record.get("scenario", "")
-            for record in real_records
-            if record.get("scenario")
+        return compute_aggregate_scores(
+            selected_skills,
+            real_records,
+            successful_results,
         )
-        total_real = sum(scenario_counts.values()) or 1
-        scenario_weights = {
-            scenario: scenario_counts.get(scenario, 0) / total_real
-            for scenario in SCENARIOS
-        }
-
-        # ---- Global real-data ranges for continuous metric normalization ----
-        # Collect all real observations across the entire dataset (all scenarios/skills)
-        # so the normalization denominator is stable and independent of the simulator.
-        import math as _math
-
-        all_real_q = [
-            float(
-                r["conversation_metrics"].get("questions_per_interrogative_turn", 0.0),
-            )
-            for r in real_records
-            if isinstance(r.get("conversation_metrics"), dict)
-        ]
-        all_real_w = [
-            float(r["conversation_metrics"].get("avg_words_per_learner_turn", 0.0))
-            for r in real_records
-            if isinstance(r.get("conversation_metrics"), dict)
-        ]
-        real_q_range = (
-            (max(all_real_q) - min(all_real_q)) if len(all_real_q) >= 2 else 1.0
-        )
-        real_w_range = (
-            (max(all_real_w) - min(all_real_w)) if len(all_real_w) >= 2 else 1.0
-        )
-        if real_q_range <= 0.0:
-            real_q_range = 1.0
-        if real_w_range <= 0.0:
-            real_w_range = 1.0
-        # Pre-compute global log-scale range from real data for reference / diagnostics.
-        # NOTE: the per-scenario w_w1_log uses the *joint* (real+sim) log range as
-        # normalizer (val_range=None) to prevent saturation when the simulated
-        # distribution falls far outside the real range.
-        all_real_w_log = [_math.log1p(v) for v in all_real_w]
-        real_w_log_range_global = (
-            (max(all_real_w_log) - min(all_real_w_log))
-            if len(all_real_w_log) >= 2
-            else 1.0
-        ) or 1.0
-
-        # ---- Learning behavior (LB) score ----
-        # For each skill×scenario compute |real_solution_rate - sim_solution_rate|.
-        # Macro-average the absolute errors across skills within each scenario,
-        # then do a scenario-frequency-weighted average across scenarios.
-        # This gives an interpretable "the simulator is off by X% on solution rate".
-        lb_per_scenario: dict[str, Any] = {}
-        for scenario in SCENARIOS:
-            real_skill_rates: dict[str, float] = {}
-            sim_skill_rates: dict[str, float] = {}
-            per_skill_ae: dict[str, float] = {}
-            for skill_id in selected_skills:
-                real_grp = [
-                    r
-                    for r in real_records
-                    if r.get("target_skill_id") == skill_id
-                    and r.get("scenario") == scenario
-                    and r.get("solution_found") is not None
-                ]
-                sim_grp = [
-                    r
-                    for r in successful_results
-                    if r.get("target_skill_id") == skill_id
-                    and r.get("scenario") == scenario
-                ]
-                if real_grp:
-                    real_skill_rates[skill_id] = _mean(
-                        [1.0 if r.get("solution_found") else 0.0 for r in real_grp],
-                    )
-                if sim_grp:
-                    sim_skill_rates[skill_id] = _mean(
-                        [1.0 if r.get("solution_found") else 0.0 for r in sim_grp],
-                    )
-                if skill_id in real_skill_rates and skill_id in sim_skill_rates:
-                    per_skill_ae[skill_id] = abs(
-                        real_skill_rates[skill_id] - sim_skill_rates[skill_id],
-                    )
-
-            has_real_solution_data = bool(real_skill_rates)
-            macro_mae: float | None = (
-                _mean(list(per_skill_ae.values())) if per_skill_ae else None
-            )
-
-            lb_per_scenario[scenario] = {
-                "weight": scenario_weights[scenario],
-                "has_real_solution_data": has_real_solution_data,
-                "real_skill_solution_rates": real_skill_rates,
-                "sim_skill_solution_rates": sim_skill_rates,
-                "per_skill_absolute_error": per_skill_ae,
-                "macro_mae": macro_mae,
-            }
-
-        # Weighted average of per-scenario MAE across scenarios that have data
-        lb_wsum = 0.0
-        lb_wtotal = 0.0
-        for scenario, data in lb_per_scenario.items():
-            if data["macro_mae"] is not None:
-                w = data["weight"]
-                lb_wsum += data["macro_mae"] * w
-                lb_wtotal += w
-        lb_score = lb_wsum / lb_wtotal if lb_wtotal > 0 else 0.0
-
-        # ---- Conversational score ----
-        error_type_keys = sorted(ERROR_TYPE_FIELDS.keys())
-        talk_move_keys = sorted(TALK_MOVE_FIELDS.keys())
-        n_error_keys = len(error_type_keys)
-        n_talk_keys = len(talk_move_keys)
-
-        def _conv_to_dist(flags: list[float], n_keys: int) -> list[float]:
-            """Normalize a per-category presence vector to a probability distribution.
-
-            Each conversation is represented as a binary vector (1 = category observed).
-            Divide by the total count to obtain a proper distribution; fall back to a
-            uniform distribution when nothing is present (all zeros).
-            """
-            total = sum(flags)
-            if total > 0.0:
-                return [v / total for v in flags]
-            return [1.0 / n_keys] * n_keys
-
-        conv_per_scenario: dict[str, Any] = {}
-        for scenario in SCENARIOS:
-            # Pool ALL conversations in this scenario across all skills
-            real_scen = [
-                r
-                for r in real_records
-                if r.get("scenario") == scenario
-                and isinstance(r.get("conversation_metrics"), dict)
-            ]
-            sim_scen = [
-                r
-                for r in successful_results
-                if r.get("scenario") == scenario
-                and isinstance(r.get("conversation_metrics"), dict)
-            ]
-
-            # ---- Continuous metrics: W1 normalized by global real-data range ----
-            real_q_vals = [
-                float(
-                    r["conversation_metrics"].get(
-                        "questions_per_interrogative_turn",
-                        0.0,
-                    ),
-                )
-                for r in real_scen
-            ]
-            sim_q_vals = [
-                float(
-                    r["conversation_metrics"].get(
-                        "questions_per_interrogative_turn",
-                        0.0,
-                    ),
-                )
-                for r in sim_scen
-            ]
-            real_w_vals = [
-                float(r["conversation_metrics"].get("avg_words_per_learner_turn", 0.0))
-                for r in real_scen
-            ]
-            sim_w_vals = [
-                float(r["conversation_metrics"].get("avg_words_per_learner_turn", 0.0))
-                for r in sim_scen
-            ]
-            q_w1 = _wasserstein1_normalized(
-                real_q_vals,
-                sim_q_vals,
-                val_range=real_q_range,
-            )
-            w_w1 = _wasserstein1_normalized(
-                real_w_vals,
-                sim_w_vals,
-                val_range=real_w_range,
-            )
-
-            # Log-scale word counts before computing W1 to reduce sensitivity to
-            # extreme length differences (simulated learners tend to write much more
-            # than real students, which saturates the raw W1 at 1.0).
-            # Use val_range=None (joint real+sim range) instead of the real-only range:
-            # when sim values fall far outside the real range, the real-only log range
-            # is too narrow and the metric saturates at 1.0, losing all signal.
-            real_w_log = [_math.log1p(v) for v in real_w_vals]
-            sim_w_log = [_math.log1p(v) for v in sim_w_vals]
-            w_w1_log = _wasserstein1_normalized(real_w_log, sim_w_log, val_range=None)
-
-            # ---- Categorical metrics: per-conversation distributions → average → JSD ----
-            # Each conversation becomes a normalized distribution before averaging,
-            # so every conversation is weighted equally regardless of how many
-            # categories are present.
-            def _avg_dist(
-                records: list[dict[str, Any]],
-                metric_key: str,
-                keys: list[str],
-                n_keys: int,
-            ) -> list[float]:
-                distributions = []
-                for r in records:
-                    metrics = r["conversation_metrics"]
-                    flags = [
-                        1.0 if metrics.get(metric_key, {}).get(k) else 0.0 for k in keys
-                    ]
-                    distributions.append(_conv_to_dist(flags, n_keys))
-                if not distributions:
-                    return [1.0 / n_keys] * n_keys
-                # Average across conversations (weights each conversation equally)
-                return [_mean([d[i] for d in distributions]) for i in range(n_keys)]
-
-            real_err_dist = _avg_dist(
-                real_scen,
-                "errors",
-                error_type_keys,
-                n_error_keys,
-            )
-            sim_err_dist = _avg_dist(sim_scen, "errors", error_type_keys, n_error_keys)
-            error_jsd = _jsd_log2(real_err_dist, sim_err_dist)
-
-            real_talk_dist = _avg_dist(
-                real_scen,
-                "talk_moves",
-                talk_move_keys,
-                n_talk_keys,
-            )
-            sim_talk_dist = _avg_dist(
-                sim_scen,
-                "talk_moves",
-                talk_move_keys,
-                n_talk_keys,
-            )
-            talk_jsd = _jsd_log2(real_talk_dist, sim_talk_dist)
-
-            # Weights: continuous metrics share 40%, categorical JSD metrics share 60%.
-            METRIC_WEIGHTS = {
-                "q_w1": 0.15,
-                "w_w1": 0.25,
-                "error_jsd": 0.30,
-                "talk_jsd": 0.30,
-            }
-            macro_avg = (
-                METRIC_WEIGHTS["q_w1"] * q_w1
-                + METRIC_WEIGHTS["w_w1"] * w_w1_log
-                + METRIC_WEIGHTS["error_jsd"] * error_jsd
-                + METRIC_WEIGHTS["talk_jsd"] * talk_jsd
-            )
-
-            # ---- Per-skill breakdown (diagnostic only, not used in aggregation) ----
-            per_skill_breakdown: dict[str, Any] = {}
-            for skill_id in selected_skills:
-                real_sk = [r for r in real_scen if r.get("target_skill_id") == skill_id]
-                sim_sk = [r for r in sim_scen if r.get("target_skill_id") == skill_id]
-                real_sk_q = [
-                    float(
-                        r["conversation_metrics"].get(
-                            "questions_per_interrogative_turn",
-                            0.0,
-                        ),
-                    )
-                    for r in real_sk
-                ]
-                sim_sk_q = [
-                    float(
-                        r["conversation_metrics"].get(
-                            "questions_per_interrogative_turn",
-                            0.0,
-                        ),
-                    )
-                    for r in sim_sk
-                ]
-                real_sk_w = [
-                    float(
-                        r["conversation_metrics"].get(
-                            "avg_words_per_learner_turn",
-                            0.0,
-                        ),
-                    )
-                    for r in real_sk
-                ]
-                sim_sk_w = [
-                    float(
-                        r["conversation_metrics"].get(
-                            "avg_words_per_learner_turn",
-                            0.0,
-                        ),
-                    )
-                    for r in sim_sk
-                ]
-                real_sk_w_log = [_math.log1p(v) for v in real_sk_w]
-                sim_sk_w_log = [_math.log1p(v) for v in sim_sk_w]
-                per_skill_breakdown[skill_id] = {
-                    "n_real": len(real_sk),
-                    "n_sim": len(sim_sk),
-                    "real_q_mean": _mean(real_sk_q) if real_sk_q else None,
-                    "sim_q_mean": _mean(sim_sk_q) if sim_sk_q else None,
-                    "real_words_mean": _mean(real_sk_w) if real_sk_w else None,
-                    "sim_words_mean": _mean(sim_sk_w) if sim_sk_w else None,
-                    "q_w1": _wasserstein1_normalized(
-                        real_sk_q,
-                        sim_sk_q,
-                        val_range=real_q_range,
-                    ),
-                    "words_w1": _wasserstein1_normalized(
-                        real_sk_w,
-                        sim_sk_w,
-                        val_range=real_w_range,
-                    ),
-                    "words_w1_log": _wasserstein1_normalized(
-                        real_sk_w_log,
-                        sim_sk_w_log,
-                        val_range=None,
-                    ),
-                    "words_w1_log_global_range": real_w_log_range_global,
-                    "real_error_dist": dict(
-                        zip(
-                            error_type_keys,
-                            _avg_dist(real_sk, "errors", error_type_keys, n_error_keys),
-                            strict=False,
-                        ),
-                    ),
-                    "sim_error_dist": dict(
-                        zip(
-                            error_type_keys,
-                            _avg_dist(sim_sk, "errors", error_type_keys, n_error_keys),
-                            strict=False,
-                        ),
-                    ),
-                    "real_talk_dist": dict(
-                        zip(
-                            talk_move_keys,
-                            _avg_dist(
-                                real_sk,
-                                "talk_moves",
-                                talk_move_keys,
-                                n_talk_keys,
-                            ),
-                            strict=False,
-                        ),
-                    ),
-                    "sim_talk_dist": dict(
-                        zip(
-                            talk_move_keys,
-                            _avg_dist(
-                                sim_sk,
-                                "talk_moves",
-                                talk_move_keys,
-                                n_talk_keys,
-                            ),
-                            strict=False,
-                        ),
-                    ),
-                }
-
-            conv_per_scenario[scenario] = {
-                "weight": scenario_weights[scenario],
-                "questions_per_interrogative_turn_w1": q_w1,
-                "avg_words_per_learner_turn_w1": w_w1,
-                "avg_words_per_learner_turn_w1_log": w_w1_log,
-                "error_types_jsd": error_jsd,
-                "talk_moves_jsd": talk_jsd,
-                "macro_average_distance": macro_avg,
-                "per_skill_breakdown": per_skill_breakdown,
-                "detail": {
-                    "real_q_vals": real_q_vals,
-                    "sim_q_vals": sim_q_vals,
-                    "real_w_vals": real_w_vals,
-                    "sim_w_vals": sim_w_vals,
-                    "real_error_dist": dict(
-                        zip(error_type_keys, real_err_dist, strict=False),
-                    ),
-                    "sim_error_dist": dict(
-                        zip(error_type_keys, sim_err_dist, strict=False),
-                    ),
-                    "real_talk_dist": dict(
-                        zip(talk_move_keys, real_talk_dist, strict=False),
-                    ),
-                    "sim_talk_dist": dict(
-                        zip(talk_move_keys, sim_talk_dist, strict=False),
-                    ),
-                    "real_q_range_used": real_q_range,
-                    "real_w_range_used": real_w_range,
-                    "real_w_log_range_global": real_w_log_range_global,
-                },
-            }
-
-        # Weighted average conversational score
-        conv_wsum = 0.0
-        conv_wtotal = 0.0
-        for scenario, data in conv_per_scenario.items():
-            w = data["weight"]
-            conv_wsum += data["macro_average_distance"] * w
-            conv_wtotal += w
-        conv_score = conv_wsum / conv_wtotal if conv_wtotal > 0 else 0.0
-
-        # ---- Final EvalConvoLearn composite score ----
-        alpha = EVAL_CONVO_LEARN_ALPHA
-        eval_convo_learn = alpha * lb_score + (1.0 - alpha) * conv_score
-
-        return {
-            "scenario_weights": scenario_weights,
-            "learning_behavior": {
-                "per_scenario": lb_per_scenario,
-                "weighted_lb_score": lb_score,
-            },
-            "conversational": {
-                "per_scenario": conv_per_scenario,
-                "weighted_conv_score": conv_score,
-            },
-            "eval_convo_learn": {
-                "alpha": alpha,
-                "lb_score": lb_score,
-                "conv_score": conv_score,
-                "score": eval_convo_learn,
-            },
-        }
 
     def _build_summary(
         self,
@@ -1642,6 +1247,7 @@ class DatasetFittedConversationalBenchmark:
         sampling_stats: dict[str, Any],
         details_path: Path,
         selected_records_path: Path,
+        real_metric_records_path: Path,
     ) -> dict[str, Any]:
         successful_results = [
             result
@@ -1798,6 +1404,11 @@ class DatasetFittedConversationalBenchmark:
             real_records=real_records,
             successful_results=successful_results,
         )
+        standard_errors = compute_standard_errors(
+            selected_skills=selected_skills,
+            real_records=real_records,
+            successful_results=successful_results,
+        )
 
         return {
             "benchmark": "DatasetFittedConversationalBenchmark",
@@ -1807,6 +1418,7 @@ class DatasetFittedConversationalBenchmark:
             "dataset_conversations_path": str(self.conversations_jsonl_path),
             "details_file": str(details_path),
             "selected_real_records_file": str(selected_records_path),
+            "real_metric_records_file": str(real_metric_records_path),
             "selected_skills": selected_skills,
             "counts": {
                 **load_stats,
@@ -1854,4 +1466,5 @@ class DatasetFittedConversationalBenchmark:
             # ---- Composite scoring (intermediate steps + final score) ----
             "aggregate_scores": aggregate_scores,
             "eval_convo_learn_score": aggregate_scores["eval_convo_learn"]["score"],
+            "standard_errors": standard_errors,
         }

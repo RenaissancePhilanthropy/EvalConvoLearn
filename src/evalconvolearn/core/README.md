@@ -41,6 +41,8 @@ Concrete helpers provided:
 
 ## `flexlearner.py` — `FlexLearner`
 
+> **Note:** `FlexLearner` currently supports **OpenAI models only**. The internal LLM calls in `learns_from_conversation` and `answer_practice_item` hardcode `gpt-4.1-mini` and use an `OpenAI()` client directly. Claude model support requires threading a `model` parameter through these methods and routing via `utils/llm_client.py`.
+
 Abstract extension of `BaseLearner` for **transparent, skill-guardrail-based** simulations. The learner's true mastery state is always tracked as a list of skill IDs; the *visible* knowledge representation (what gets injected into prompts) is left to subclasses.
 
 Key abstract methods to implement:

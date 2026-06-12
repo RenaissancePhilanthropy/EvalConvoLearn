@@ -34,7 +34,7 @@ Scripts for extracting, tagging, and reviewing real Eedi tutoring conversations.
 
 ### Files
 
-- **`skill-space.csv`** *(incomplete — requires manual completion)* — Master skill catalogue with columns `skill_id`, `skill_description`, `prerequisite_skills`, `problem_1`, `problem_2`, `misconceptions`. The `problem_1`, `problem_2`, and `misconceptions` columns are intentionally left blank and must be filled in from the Florida DOE BEST curriculum before running the data pipeline.
+- **`skill-space.csv`** *(example skills and problems - can be extended)* — Master skill catalogue with columns `skill_id`, `skill_description`, `prerequisite_skills`, `problem_1`, `problem_2`, `misconceptions`. The `skill_id`, `skill_description` and `prerequisite_skills` columns are extracted from the Florida DOE BEST curriculum example. The `problem_1`, `problem_2`, `misconceptions` columns are examples of skill-aligned problems and possible student misconceptions. This data is a working example but users are encouraged to use their own skill ontology and aligned problems.
 
 - **`tagged-practice-items-with-responses.csv`** *(generated — not distributed)* — Practice items with `helpful_response` and `unhelpful_response` columns. Produced by running the two `data_cleaning/` scripts below in order.
 

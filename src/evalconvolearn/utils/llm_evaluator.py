@@ -4,19 +4,11 @@ from __future__ import annotations
 
 import logging
 
-from openai import OpenAI
 from pydantic import BaseModel
 
+from .llm_client import make_client
+
 logger = logging.getLogger(__name__)
-
-_client: OpenAI | None = None
-
-
-def _get_client() -> OpenAI:
-    global _client
-    if _client is None:
-        _client = OpenAI()
-    return _client
 
 
 class CorrectnessVerdict(BaseModel):
@@ -83,6 +75,7 @@ def did_learner_find_solution_in_turns(
     learner_turns: list[str],
     correct_answer: str = "",
     model: str = "gpt-4.1-mini",
+    computed_conversation_ended_reason: str | None = None,
 ) -> SolutionFoundVerdict:
     """Judge whether the learner found a correct solution across their conversation turns.
 
@@ -99,7 +92,9 @@ def did_learner_find_solution_in_turns(
     correct_answer:
         Optional reference answer for the problem.
     model:
-        OpenAI model to use for evaluation.
+        LLM model to use for evaluation.
+    computed_conversation_ended_reason:
+        The conversation ended reason computed by the system. This can be provided as additional context to the evaluator.
 
     Returns
     -------
@@ -113,7 +108,7 @@ def did_learner_find_solution_in_turns(
             solution_found=False,
         )
 
-    client = _get_client()
+    client = make_client(model)
 
     numbered_turns = "\n".join(
         f"Turn {i + 1}: {turn}" for i, turn in enumerate(learner_turns)
@@ -124,11 +119,14 @@ def did_learner_find_solution_in_turns(
         "tutored conversation. Determine whether the student produced a correct "
         "and complete solution to the problem at any point across their messages. "
         "The solution does not need to appear in a single message — the student "
-        "may build up to it across turns."
+        "may build up to it across turns.\n"
+        "If provided, consider the computed conversation ended reason as additional context for your judgment."
     )
     user = f"Problem:\n{problem_text}\n\nStudent messages (in order):\n{numbered_turns}\n\n"
     if correct_answer:
         user += f"Reference correct answer:\n{correct_answer}\n\n"
+    if computed_conversation_ended_reason:
+        user += f"Computed conversation ended reason:\n{computed_conversation_ended_reason}\n\n"
     user += (
         "Did the student find a correct solution? Return your reasoning and verdict."
     )
@@ -141,7 +139,11 @@ def did_learner_find_solution_in_turns(
         ],
         response_format=SolutionFoundVerdict,
     )
-    return completion.choices[0].message.parsed
+    result = completion.choices[0].message.parsed
+    if result is None:
+        msg = "LLM structured-output call returned no parsed result"
+        raise RuntimeError(msg)
+    return result
 
 
 def evaluate_knowledge_sufficiency(
@@ -156,7 +158,7 @@ def evaluate_knowledge_sufficiency(
 
     Returns a ``KnowledgeSufficiencyVerdict`` with ``can_answer_correctly`` flag.
     """
-    client = _get_client()
+    client = make_client(model)
 
     system = (
         "You are an expert math teacher evaluating whether a student has "
@@ -181,7 +183,11 @@ def evaluate_knowledge_sufficiency(
         ],
         response_format=KnowledgeSufficiencyVerdict,
     )
-    return completion.choices[0].message.parsed
+    result = completion.choices[0].message.parsed
+    if result is None:
+        msg = "LLM structured-output call returned no parsed result"
+        raise RuntimeError(msg)
+    return result
 
 
 def evaluate_response_correctness(
@@ -195,7 +201,7 @@ def evaluate_response_correctness(
     Returns a `CorrectnessVerdict` with ``is_correct`` and
     ``asked_followup`` flags.
     """
-    client = _get_client()
+    client = make_client(model)
 
     system = (
         "You are an expert math teacher evaluating a student's response to a "
@@ -225,7 +231,11 @@ def evaluate_response_correctness(
         ],
         response_format=CorrectnessVerdict,
     )
-    return completion.choices[0].message.parsed
+    result = completion.choices[0].message.parsed
+    if result is None:
+        msg = "LLM structured-output call returned no parsed result"
+        raise RuntimeError(msg)
+    return result
 
 
 def _format_dialogue_history(dialogue_history: list[dict[str, str]]) -> str:
@@ -272,7 +282,7 @@ def classify_conversation_behaviors(
             talk_moves=ConversationTalkMoveLabels(),
         )
 
-    client = _get_client()
+    client = make_client(model)
     system = (
         "You are an expert math learning scientist reviewing a full tutor-learner conversation. "
         "Label only what is supported by the learner's messages. Multiple labels may be true. "
@@ -303,4 +313,8 @@ def classify_conversation_behaviors(
         ],
         response_format=ConversationBehaviorLabelsVerdict,
     )
-    return completion.choices[0].message.parsed
+    result = completion.choices[0].message.parsed
+    if result is None:
+        msg = "LLM structured-output call returned no parsed result"
+        raise RuntimeError(msg)
+    return result

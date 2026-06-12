@@ -68,6 +68,7 @@ def run_base_learner_conversation(
     save_conversation: bool = True,
     correct_answer: str | None = None,
     tutor_generation_metadata: dict | None = None,
+    classification_model: str = "gpt-4.1-mini",
 ) -> BaseConversationResult:
     """Run a multi-turn conversation using only the BaseLearner interface.
 
@@ -247,6 +248,8 @@ def run_base_learner_conversation(
             problem_text=problem_text,
             learner_turns=learner_turns,
             correct_answer=correct_answer,
+            model=classification_model,
+            computed_conversation_ended_reason=result.conversation_ended_reason,
         )
         result.solution_found = verdict.solution_found
 

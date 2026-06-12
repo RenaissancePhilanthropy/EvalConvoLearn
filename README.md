@@ -28,6 +28,18 @@ src/evalconvolearn/
 ├── services/           # Orchestration layer (conversations, evaluations, sessions)
 ├── storage/            # Persistence (CSV-based StudentPool storage)
 └── utils/              # LLM grading, metrics, alignment matrices, data loaders
+
+data/                   # Scripts for generating and managing datasets (not raw data files)
+├── florida-doe/        # Florida DOE BEST curriculum: skill space CSV and data-cleaning scripts
+├── eedi_tutoring/      # Pipeline for tagging and reviewing real Eedi tutoring conversations
+├── simulated_datasets/ # Script for simulating learner-tutor conversation datasets with FlexLearner
+└── data_utils/         # Shared helpers (e.g. adding mock tutor/learner responses)
+
+examples/               # End-to-end usage examples
+├── base_learner/       # BaseLearner implementations (binary-skill, conversation-history)
+├── flexlearner/        # FlexLearner implementations (binary, history, knowledge-graph)
+├── evaluations/        # Evaluation scripts for all four benchmark families
+└── learner_utils/      # Utilities: learner pool creation, manual tutor session
 ```
 
 **Four benchmark families:**
@@ -87,20 +99,48 @@ class MyLearner(BaseLearner):
         ...
 ```
 
-**If you have a dataset of real tutoring conversations**, format it to match the expected schema and run the dataset-fitted benchmark to compare your learner's behavior against real data:
+**If you have a dataset of real tutoring conversations**, format it as a JSONL file (one JSON object per line) and run the dataset-fitted benchmark to compare your learner's behavior against real data:
 
 ```python
-from evalconvolearn.benchmarks.realistic_benchmarks_from_conversation_data import DatasetFittedConversationalBenchmark
+from evalconvolearn.benchmarks.realistic_benchmarks_from_conversation_data import (
+    DatasetFittedConversationalBenchmark,
+)
+from evalconvolearn.models.evaluation import LearnerEvalConfig
 
-benchmark = DatasetFittedConversationalBenchmark(skill_space, practice_item_pool)
-results = benchmark.run(MyLearner, dataset=your_formatted_dataset)
+learner_config = LearnerEvalConfig(
+    learner_class=MyLearner,
+    init_kwargs={"skill_space": skill_space},
+)
+benchmark = DatasetFittedConversationalBenchmark(
+    skill_space=skill_space,
+    practice_item_pool=practice_item_pool,
+    learner_config=learner_config,
+    skill_levels={},
+    benchmark_extra_args={
+        "conversations_jsonl_path": "path/to/your/conversations.jsonl",
+    },
+)
+summary_path = benchmark.run_all_evaluations()
 ```
+
+Each line of the JSONL file must be a JSON object with at minimum:
+
+| Field | Type | Description |
+|---|---|---|
+| `session_id` | `str` | Unique conversation identifier |
+| `item_skills` | `list[str]` | Skill IDs aligned to the practice item (must match your skill space) |
+| `practice_item_text` | `str` | The problem presented to the learner |
+| `dialogue_history` | `list[dict]` | Turns as `{"role": "assistant"/"user", "content": "..."}` (tutor = `"assistant"`, learner = `"user"`) |
+| `mastered_skills_before_conversation` | `list[str]` | Skill IDs the learner had mastered before this session |
+| `mastered_skills_from_conversation` | `list[str]` | Skill IDs the learner mastered *during* this session |
+
+Optional but useful fields: `learner_id`, `tutor_id`, `correct_answer`, `item_skill_prerequisites`.
 
 **If you don't have a dataset**, you first need to prepare the skill space and practice items from the Florida DOE BEST curriculum, then run the standard benchmarks.
 
 #### Step 1 — Complete the skill space
 
-`data/florida-doe/skill-space.csv` ships with skill IDs and descriptions but **no practice problems or misconceptions**. The `problem_1`, `problem_2`, and `misconceptions` columns for each skill can be filled using the [Florida DOE BEST Mathematics curriculum](https://www.fldoe.org/academics/standards/subject-areas/math-science/mathematics/bestmath.stml) for example. This set of skills serves as an example but can be replaced with any set of skills including prerequisite relationships, aligned practice items and example misconceptions.
+`data/florida-doe/skill-space.csv` ships with skill IDs, descriptions, and **worked example problems and misconceptions for all 15 skills**, so you can run the steps below immediately. You can extend or replace this content using the [Florida DOE BEST Mathematics curriculum](https://www.fldoe.org/academics/standards/subject-areas/math-science/mathematics/bestmath.stml) or substitute your own skill set — any CSV with `skill_id`, `skill_description`, `prerequisite_skills`, `problem_1`, `problem_2`, and `misconceptions` columns will work.
 
 #### Step 2 — Pivot into a practice-item pool
 
@@ -119,7 +159,7 @@ python data/florida-doe/data_cleaning/generate_tutor_responses.py \
 # add --resume to pick up after an interruption
 ```
 
-This calls an OpenAI model (set `OPENAI_API_KEY` in your environment) to produce a `helpful_response` and an `unhelpful_response` for every practice item.
+This calls an OpenAI model (set `OPENAI_API_KEY` in your environment) to produce a `helpful_response` and an `unhelpful_response` for every practice item. Note that the responses are generated based on the **problem text and skill description alone** — they are model tutor responses to the problem, not reactions to any specific learner message.
 
 #### Step 4 — Run the benchmarks
 
@@ -155,9 +195,13 @@ results = sdk.run_evaluation(config)
 
 ### 2. Simulate a tutoring conversation dataset
 
+> **This section is independent from the evaluation benchmarks above.** You can use the simulation pipeline on its own to generate synthetic tutoring datasets without running any benchmarks, and you can run the benchmarks with your own real data without ever using the simulation.
+
 Use the learner class `FlexLearner` to simulate a dataset of tutoring conversations on a set of practice items and aligned skills. `FlexLearner` implements explicit skill states and learner <> tutor conversations with stateful execution graphs. The framework also allows to subclass `FlexLearner` to test different implementations of it, in particular with different 'knowledge' technical structures.
 
-Run the simulation script directly (requires a practice-item pool from Step 3 above):
+> **Prerequisite:** this script requires a completed skill space and practice-item pool. Complete Steps 1–3 from the section above first, or ensure `skill-space.csv` has `problem_1`, `problem_2`, and `misconceptions` filled in (the file ships with several worked examples to get you started).
+
+Run the simulation script directly:
 
 ```bash
 python data/simulated_datasets/simulate_flexlearner_dataset.py \
@@ -185,6 +229,44 @@ run_simulation(
 Each learner is initialized with a random sample of skills (prerequisites are automatically closed), assigned a persona and a set of misconceptions, then runs `nb_conversations` sessions against a helpful (90%) or unhelpful (10%) LLM tutor. Sessions are persisted to disk under the pool directory, and a Markdown learning-sequence summary is written alongside them.
 
 See [examples/](examples/) for complete implementations including binary-skill, conversation-history, and knowledge-graph variants.
+
+## Running tests
+
+The test suite uses [pytest](https://docs.pytest.org/). Install the dev dependencies first:
+
+```bash
+# with uv (recommended):
+uv sync --group dev
+# or with pip:
+pip install -e ".[dev]"
+```
+
+**Unit tests** (no API key required):
+
+```bash
+pytest tests/unit
+```
+
+**Integration tests** (require `OPENAI_API_KEY`):
+
+```bash
+pytest tests/integration
+```
+
+**All tests:**
+
+```bash
+pytest
+```
+
+Useful flags:
+- Skip slow tests: `pytest -m "not slow"`
+- Skip integration tests: `pytest -m "not integration"`
+- Run with coverage: `pytest --cov=src/evalconvolearn --cov-report=term-missing`
+
+## TODO
+
+- **Claude model support for FlexLearner**: `FlexLearner` and its subclasses (`BinarySkillsFlexLearner`, etc.) currently hardcode `gpt-4.1-mini` for internal LLM calls in `learns_from_conversation` and `answer_practice_item`. To support Claude models here, these methods need to accept a `model` parameter and route through `make_client` from `src/evalconvolearn/utils/llm_client.py`.
 
 ## Contributors
 

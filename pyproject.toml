@@ -1,18 +1,16 @@
 [project]
-name = "EvalConvoLearn"
+name = "evalconvolearn"
 version = "0.1.0"
 description = "An open-source framework to evaluate learner simulations."
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
-    { name = "Baptiste Moreau-Pernet", email = "baptiste@levi.digitalharbor.org" }
+    { name = "Baptiste Moreau-Pernet", email = "baptiste.moreaupernet@gmail.com" }
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
-    "fastapi",
-    "uvicorn[standard]",
-    "pydantic",
-    "streamlit",
+    "pydantic>=2.0",
+    "python-dotenv>=1.0",
     "httpx",
     "pandas>=2.3.3",
     "datasets>=3.2.0",
@@ -21,8 +19,6 @@ dependencies = [
     "langgraph>=1.0.5",
     "langgraph-checkpoint-sqlite>=3.0.1",
     "networkx>=3.6.1",
-    "matplotlib>=3.10.8",
-    "seaborn>=0.13.2",
     "pydantic-settings>=2.12.0",
     "scikit-learn>=1.8.0",
     "aiohttp>=3.13.5",
@@ -50,7 +46,7 @@ packages = ["src/evalconvolearn"]
 
 [tool.black]
 line-length = 88
-target-version = ['py310', 'py311']
+target-version = ['py311']
 
 [tool.isort]
 profile = "black"

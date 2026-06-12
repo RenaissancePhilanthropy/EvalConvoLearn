@@ -162,7 +162,9 @@ data/checkpoints/
 data/**/*.jsonl
 data/**/*.json
 data/**/*.csv
+outputs/dataset_fitted_evals/*
 outputs/**/*.jsonl
 outputs/**/*.json
 outputs/**/*.csv
 *.txt
+data/eedi_tutoring/**/*.md
