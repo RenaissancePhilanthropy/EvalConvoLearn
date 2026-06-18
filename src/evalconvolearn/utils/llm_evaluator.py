@@ -110,9 +110,7 @@ def did_learner_find_solution_in_turns(
 
     client = make_client(model)
 
-    numbered_turns = "\n".join(
-        f"Turn {i + 1}: {turn}" for i, turn in enumerate(learner_turns)
-    )
+    numbered_turns = "\n".join(f"Turn {i + 1}: {turn}" for i, turn in enumerate(learner_turns))
 
     system = (
         "You are an expert math teacher reviewing a student's messages during a "
@@ -127,9 +125,7 @@ def did_learner_find_solution_in_turns(
         user += f"Reference correct answer:\n{correct_answer}\n\n"
     if computed_conversation_ended_reason:
         user += f"Computed conversation ended reason:\n{computed_conversation_ended_reason}\n\n"
-    user += (
-        "Did the student find a correct solution? Return your reasoning and verdict."
-    )
+    user += "Did the student find a correct solution? Return your reasoning and verdict."
 
     completion = client.beta.chat.completions.parse(
         model=model,
@@ -216,7 +212,7 @@ def evaluate_response_correctness(
                     "All elements in learner_response list must be strings.",
                 )
         learner_response = "Learner messages:\n" + "\n".join(
-            [f"{i+1}: {lr}" for i, lr in enumerate(learner_response)],
+            [f"{i + 1}: {lr}" for i, lr in enumerate(learner_response)],
         )
     user = f"Problem:\n{problem_text}\n\nStudent response:\n{learner_response}\n\n"
     if correct_answer:

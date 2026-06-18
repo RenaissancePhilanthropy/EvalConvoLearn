@@ -142,11 +142,7 @@ class EvaluationService:
 
     def _create_run_dir(self) -> Path:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        label_slug = (
-            f"_{self.eval_config.label.replace(' ', '_')}"
-            if self.eval_config.label
-            else ""
-        )
+        label_slug = f"_{self.eval_config.label.replace(' ', '_')}" if self.eval_config.label else ""
         # eval_config.output_dir takes precedence to support multi-run setups
         root_evals = self.eval_config.output_dir or self.sdk_config.evaluations_dir
         run_dir = Path(root_evals) / f"{timestamp}_{self._run_id}{label_slug}"
@@ -214,9 +210,7 @@ class EvaluationService:
             learner_pool=pool,
             learner_config=learner_config,
             skill_levels=(
-                self.eval_config.skill_levels.get("PlacementTestBenchmark")
-                if self.eval_config.skill_levels
-                else None
+                self.eval_config.skill_levels.get("PlacementTestBenchmark") if self.eval_config.skill_levels else None
             ),
             benchmark_extra_args=(
                 self.eval_config.benchmarks_custom_args.get(
@@ -266,9 +260,7 @@ class EvaluationService:
             ),
         )
         output_file = benchmark.run_all_evaluations()
-        structured_metrics = (
-            LearningFromConversationBenchmark.compute_structured_metrics(output_file)
-        )
+        structured_metrics = LearningFromConversationBenchmark.compute_structured_metrics(output_file)
         return {
             "benchmark_class": "LearningFromConversationBenchmark",
             "output_file": str(output_file),
@@ -310,9 +302,7 @@ class EvaluationService:
             benchmark_extra_args=extra_args or None,
         )
         output_file = benchmark.run_all_evaluations()
-        structured_metrics = (
-            MultiConversationsPracticeBenchmark.compute_structured_metrics(output_file)
-        )
+        structured_metrics = MultiConversationsPracticeBenchmark.compute_structured_metrics(output_file)
         return {
             "benchmark_class": "MultiConversationsPracticeBenchmark",
             "output_file": str(output_file),

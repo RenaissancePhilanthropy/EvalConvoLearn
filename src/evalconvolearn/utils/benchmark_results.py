@@ -46,7 +46,7 @@ def print_placement_test_results(run_data: dict) -> None:
     print(
         f"  {'Skill':<20}  {'Expected':>10}  {'Got':>6}  {'CanLearn':>10}  {'Aligned':>8}  Answer",
     )
-    print(f"  {'-'*20}  {'-'*10}  {'-'*6}  {'-'*10}  {'-'*8}  {'-'*30}")
+    print(f"  {'-' * 20}  {'-' * 10}  {'-' * 6}  {'-' * 10}  {'-' * 8}  {'-' * 30}")
     for item in items:
         skill = (item.get("skill") or "")[:20]
         expected_correct = item.get("expected_correct")  # True / False / None
@@ -114,9 +114,7 @@ def print_lfc_results(output_file: Path, label: str) -> None:
             seen_modes.append(m)
 
     for mode in seen_modes:
-        mode_records = [
-            r for r in records if r.get("check_mode", "with_skill_check") == mode
-        ]
+        mode_records = [r for r in records if r.get("check_mode", "with_skill_check") == mode]
         _print_lfc_mode_summary(mode, mode_records)
 
 
@@ -159,17 +157,14 @@ def _print_lfc_mode_summary(mode: str, records: list[dict]) -> None:
             f"{'pre':>5}  {'post':>5}  {'ok':>4}",
         )
         print(
-            f"  {'-'*3}  {'-'*12}  {'-'*10}  "
-            f"{'-'*28}  {'-'*28}  "
-            f"{'-'*5}  {'-'*5}  {'-'*4}",
+            f"  {'-' * 3}  {'-' * 12}  {'-' * 10}  {'-' * 28}  {'-' * 28}  {'-' * 5}  {'-' * 5}  {'-' * 4}",
         )
     else:
         print(
-            f"  {'#':>3}  {'level':<12}  {'resp':<10}  "
-            f"{'expected':<30}  {'learned':<30}  {'ok':>4}",
+            f"  {'#':>3}  {'level':<12}  {'resp':<10}  {'expected':<30}  {'learned':<30}  {'ok':>4}",
         )
         print(
-            f"  {'-'*3}  {'-'*12}  {'-'*10}  {'-'*30}  {'-'*30}  {'-'*4}",
+            f"  {'-' * 3}  {'-' * 12}  {'-' * 10}  {'-' * 30}  {'-' * 30}  {'-' * 4}",
         )
 
     for rec in records:
@@ -189,8 +184,7 @@ def _print_lfc_mode_summary(mode: str, records: list[dict]) -> None:
             )
         else:
             print(
-                f"  {idx:>3}  {level:<12}  {rtype:<10}  "
-                f"{expected[:30]:<30}  {learned[:30]:<30}  {ok:>4}",
+                f"  {idx:>3}  {level:<12}  {rtype:<10}  {expected[:30]:<30}  {learned[:30]:<30}  {ok:>4}",
             )
 
 
@@ -254,7 +248,7 @@ def print_mcp_results(output_file: Path, label: str) -> None:
 class PlacementTestResult:
     """Result tracking for placement test evaluations."""
 
-    def __init__(self, test_name: str, test_id: str):
+    def __init__(self, test_name: str, test_id: str) -> None:
         self.test_name = test_name
         self.test_id = test_id
         self.timestamp = datetime.now().isoformat()
@@ -269,7 +263,7 @@ class PlacementTestResult:
         alignment_accuracy: float,
         alignment_evaluated: int,
         items: list[dict],
-    ):
+    ) -> None:
         """Add a placement test evaluation result."""
         result = {
             "learner_level": learner_level,
@@ -283,12 +277,10 @@ class PlacementTestResult:
         }
         self.results.append(result)
 
-    def save_to_file(self, output_dir: Path, runs_per_level: int):
+    def save_to_file(self, output_dir: Path, runs_per_level: int) -> Path:
         """Save results to JSONL file."""
         output_dir.mkdir(parents=True, exist_ok=True)
-        output_file = (
-            output_dir / f"placement_test_skill_alignment_{runs_per_level}runs.jsonl"
-        )
+        output_file = output_dir / f"placement_test_skill_alignment_{runs_per_level}runs.jsonl"
 
         with open(output_file, "w", encoding="utf-8") as f:
             for result in self.results:

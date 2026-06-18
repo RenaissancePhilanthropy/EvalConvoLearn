@@ -20,10 +20,10 @@ load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from base_learner.binary_skill_learner import BinarySkillLearner
-from base_learner.conversation_history_learner import ConversationHistoryLearner
+from base_learner.binary_skill_learner import BinarySkillLearner  # noqa: E402
+from base_learner.conversation_history_learner import ConversationHistoryLearner  # noqa: E402
 
-from evalconvolearn import EvalConvoLearn, EvaluationConfig, LearnerEvalConfig
+from evalconvolearn import EvalConvoLearn, EvaluationConfig, LearnerEvalConfig  # noqa: E402
 
 _OUTPUT_DIR = Path("outputs/base_learner/multi_conv")
 

@@ -6,7 +6,7 @@ import json
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from ..models.tutor import TutorResponse
@@ -25,7 +25,7 @@ class BaseTutor(ABC):
     def generate_response(
         self,
         dialogue_history: list[dict],
-        **kwargs,
+        **kwargs: Any,
     ) -> TutorResponse:
         """Generate a tutor response given the conversation history.
 
@@ -99,8 +99,6 @@ def format_conversation_as_few_shot(conv: dict) -> str:
     # dialogue may be a list of turn dicts or a pre-formatted string
     if isinstance(dialogue, list):
         dialogue = "\n".join(
-            f"{m.get('role', 'unknown').capitalize()}: {m.get('content', '')}"
-            for m in dialogue
-            if isinstance(m, dict)
+            f"{m.get('role', 'unknown').capitalize()}: {m.get('content', '')}" for m in dialogue if isinstance(m, dict)
         )
     return f"### Practice item: {item_text}\n### Dialogue:\n{dialogue}"

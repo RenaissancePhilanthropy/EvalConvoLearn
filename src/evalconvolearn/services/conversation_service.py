@@ -6,5 +6,5 @@ from ..core.config import EvalConvoLearnConfig
 class ConversationService:
     """Handles conversation logic."""
 
-    def __init__(self, config: EvalConvoLearnConfig):
+    def __init__(self, config: EvalConvoLearnConfig) -> None:
         self.config = config

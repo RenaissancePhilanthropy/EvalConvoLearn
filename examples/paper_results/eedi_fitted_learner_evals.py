@@ -29,13 +29,15 @@ load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from base_learner.binary_skill_learner import BinarySkillLearner
-from base_learner.conversation_history_learner import ConversationHistoryLearner
+from base_learner.binary_skill_learner import BinarySkillLearner  # noqa: E402
+from base_learner.conversation_history_learner import ConversationHistoryLearner  # noqa: E402
 
-from evalconvolearn import EvalConvoLearn, EvaluationConfig, LearnerEvalConfig
+from evalconvolearn import EvalConvoLearn, EvaluationConfig, LearnerEvalConfig  # noqa: E402
+from evalconvolearn.models.practice_item import PracticeItemPool  # noqa: E402
+from evalconvolearn.models.skill import SkillSpace  # noqa: E402
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.WARNING,
     format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
     datefmt="%H:%M:%S",
 )
@@ -68,7 +70,7 @@ _LEARNER_VARIANTS = [
 #   model_tutor_evals — tutor responses + LLM-as-judge evals (error/talk-move tagging)
 _MODEL_COMBINATIONS: list[tuple[str, str, int]] = [
     ("gpt-4.1-mini", "claude-sonnet-4-6", 3),
-    ("gpt-4.1-mini", "claude-sonnet-4-6", 0),
+    # ("gpt-4.1-mini", "claude-sonnet-4-6", 0),
 ]
 
 # --------------------------------------------------------------------------- #
@@ -78,7 +80,7 @@ _MODEL_COMBINATIONS: list[tuple[str, str, int]] = [
 
 def _build_eval_config(
     *,
-    learner_class,
+    learner_class: type,
     learner_short_name: str,
     base_eval_dir: Path,
     model_learner: str,
@@ -115,8 +117,7 @@ def _build_eval_config(
         benchmarks_custom_args={
             "DatasetFittedConversationalBenchmark": {
                 "conversations_jsonl_path": conversations_jsonl_path,
-                "conversation_metrics_cache_path": eval_dir
-                / "conversation_metrics_cache.json",
+                "conversation_metrics_cache_path": eval_dir / "conversation_metrics_cache.json",
                 "max_records_per_skill_mastery": 8,
                 "max_conversation_turns": 7,
                 "num_example_conversations_for_tutor_response_generation": few_shot_count,
@@ -134,8 +135,8 @@ def _build_eval_config(
 def _run_eval(
     *,
     sdk: EvalConvoLearn,
-    skill_space,
-    practice_item_pool,
+    skill_space: SkillSpace,
+    practice_item_pool: PracticeItemPool,
     eval_config: EvaluationConfig,
     run_label: str,
 ) -> None:
@@ -178,9 +179,7 @@ def main(run_id: str | None = None) -> None:
     ):
         m1_tag = model_learner.replace(".", "_")
         m2_tag = model_tutor_evals.replace(".", "_")
-        run_label = (
-            f"{learner_short_name}__m1_{m1_tag}__m2_{m2_tag}__fs{few_shot_count}"
-        )
+        run_label = f"{learner_short_name}__m1_{m1_tag}__m2_{m2_tag}__fs{few_shot_count}"
 
         eval_config = _build_eval_config(
             learner_class=learner_class,

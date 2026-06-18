@@ -275,9 +275,7 @@ def compute_conversation_metrics(
     learner_turns = extract_learner_turns(normalized_dialogue)
     interrogative_turns = [turn for turn in learner_turns if "?" in turn]
     questions_per_interrogative_turn = (
-        sum(turn.count("?") for turn in interrogative_turns) / len(interrogative_turns)
-        if interrogative_turns
-        else 0.0
+        sum(turn.count("?") for turn in interrogative_turns) / len(interrogative_turns) if interrogative_turns else 0.0
     )
     avg_words_per_learner_turn = _mean(
         [float(_count_words(turn)) for turn in learner_turns],
@@ -294,17 +292,14 @@ def compute_conversation_metrics(
     )
 
     error_flags = {
-        code: bool(getattr(classification.errors, field_name, False))
-        for code, field_name in ERROR_TYPE_FIELDS.items()
+        code: bool(getattr(classification.errors, field_name, False)) for code, field_name in ERROR_TYPE_FIELDS.items()
     }
     talk_move_flags = {
         move_name: bool(getattr(classification.talk_moves, field_name, False))
         for move_name, field_name in TALK_MOVE_FIELDS.items()
     }
     error_count = sum(1 for value in error_flags.values() if value)
-    error_bucket = (
-        "multiple" if error_count > 1 else "one" if error_count == 1 else "zero"
-    )
+    error_bucket = "multiple" if error_count > 1 else "one" if error_count == 1 else "zero"
 
     return {
         "n_learner_turns": len(learner_turns),
@@ -339,9 +334,7 @@ class DatasetFittedConversationalBenchmark:
         self.practice_item_pool = practice_item_pool
         self.learner_config = learner_config
         self.skill_levels = skill_levels
-        self.runs = (
-            benchmark_extra_args.get("runs", runs) if benchmark_extra_args else runs
-        )
+        self.runs = benchmark_extra_args.get("runs", runs) if benchmark_extra_args else runs
         self.output_dir = output_dir or Path(
             "data/benchmark_evaluations/dataset_fitted_conversational",
         )
@@ -406,15 +399,11 @@ class DatasetFittedConversationalBenchmark:
             if not hasattr(self, key):
                 setattr(self, key, value)
 
-        self.conversation_metrics_cache_path = (
-            Path(metrics_cache_path) if metrics_cache_path else None
-        )
+        self.conversation_metrics_cache_path = Path(metrics_cache_path) if metrics_cache_path else None
         self._conversation_metrics_cache = self._load_metrics_cache()
         self._rng = random.Random(self.random_seed)
         # Index of tutor_id -> list of raw conversation dicts (for few-shot examples)
-        self._tutor_conversations_index: dict[str, list[dict[str, Any]]] = (
-            self._build_tutor_conversations_index()
-        )
+        self._tutor_conversations_index: dict[str, list[dict[str, Any]]] = self._build_tutor_conversations_index()
 
         self.tutor = Tutor(
             id=str(uuid.uuid4()),
@@ -477,10 +466,7 @@ class DatasetFittedConversationalBenchmark:
 
         real_records, load_stats = self._load_real_dataset_records()
         if not real_records:
-            message = (
-                "No eligible conversational benchmark records found in "
-                f"{self.conversations_jsonl_path}."
-            )
+            message = f"No eligible conversational benchmark records found in {self.conversations_jsonl_path}."
             raise ValueError(message)
 
         selected_skills = self._select_skills(real_records)
@@ -497,23 +483,14 @@ class DatasetFittedConversationalBenchmark:
             raise ValueError(message)
 
         selected_skill_set = set(selected_skills)
-        selected_real_records = [
-            record
-            for record in real_records
-            if record["target_skill_id"] in selected_skill_set
-        ]
+        selected_real_records = [record for record in real_records if record["target_skill_id"] in selected_skill_set]
         real_metric_records = [
-            self._attach_conversation_metrics(record, source="real")
-            for record in selected_real_records
+            self._attach_conversation_metrics(record, source="real") for record in selected_real_records
         ]
 
         details_path = output_dir / "dataset_fitted_conversational_results.jsonl"
-        selected_records_path = (
-            output_dir / "dataset_fitted_conversational_selected_real_records.jsonl"
-        )
-        real_metric_records_path = (
-            output_dir / "dataset_fitted_conversational_real_metric_records.jsonl"
-        )
+        selected_records_path = output_dir / "dataset_fitted_conversational_selected_real_records.jsonl"
+        real_metric_records_path = output_dir / "dataset_fitted_conversational_real_metric_records.jsonl"
 
         with selected_records_path.open("w", encoding="utf-8") as file_handle:
             for record in sampled_records:
@@ -523,19 +500,12 @@ class DatasetFittedConversationalBenchmark:
             for record in real_metric_records:
                 file_handle.write(json.dumps(record) + "\n")
 
-        tasks = [
-            (record, run_idx)
-            for record in sampled_records
-            for run_idx in range(self.runs)
-        ]
+        tasks = [(record, run_idx) for record in sampled_records for run_idx in range(self.runs)]
         with ThreadPoolExecutor(max_workers=self.num_threads) as executor:
             futures = [
-                executor.submit(self._evaluate_record, record=record, run_idx=run_idx)
-                for record, run_idx in tasks
+                executor.submit(self._evaluate_record, record=record, run_idx=run_idx) for record, run_idx in tasks
             ]
-            sampled_results: list[dict[str, Any]] = [
-                future.result() for future in as_completed(futures)
-            ]
+            sampled_results: list[dict[str, Any]] = [future.result() for future in as_completed(futures)]
 
         with details_path.open("w", encoding="utf-8") as file_handle:
             for result in sampled_results:
@@ -621,10 +591,7 @@ class DatasetFittedConversationalBenchmark:
         ]
 
     def _load_metrics_cache(self) -> dict[str, dict[str, Any]]:
-        if (
-            not self.conversation_metrics_cache_path
-            or not self.conversation_metrics_cache_path.exists()
-        ):
+        if not self.conversation_metrics_cache_path or not self.conversation_metrics_cache_path.exists():
             return {}
         try:
             with self.conversation_metrics_cache_path.open(
@@ -691,9 +658,7 @@ class DatasetFittedConversationalBenchmark:
 
                 stats["raw_conversations"] += 1
                 item_skills = [
-                    skill_id
-                    for skill_id in conversation.get("item_skills", [])
-                    if skill_id in self.skill_space
+                    skill_id for skill_id in conversation.get("item_skills", []) if skill_id in self.skill_space
                 ]
                 if not item_skills:
                     stats["skipped_missing_skill"] += 1
@@ -735,11 +700,7 @@ class DatasetFittedConversationalBenchmark:
 
         direct_prerequisites = set(self.skill_space[target_skill_id].prerequisites)
         record_prerequisites = set(conversation.get("item_skill_prerequisites", []))
-        if (
-            len(item_skills) == 1
-            and item_skills[0] == target_skill_id
-            and record_prerequisites
-        ):
+        if len(item_skills) == 1 and item_skills[0] == target_skill_id and record_prerequisites:
             effective_prerequisites = record_prerequisites
         else:
             effective_prerequisites = direct_prerequisites
@@ -748,11 +709,7 @@ class DatasetFittedConversationalBenchmark:
         ).union(effective_prerequisites)
 
         target_skill_mastered_before = target_skill_id in mastered_before
-        mastery_group = (
-            MASTERY_GROUP_MASTERED
-            if target_skill_mastered_before
-            else MASTERY_GROUP_UNMASTERED
-        )
+        mastery_group = MASTERY_GROUP_MASTERED if target_skill_mastered_before else MASTERY_GROUP_UNMASTERED
 
         prerequisites_mastered = all_prerequisites.issubset(mastered_before)
         scenario = _compute_scenario(
@@ -774,9 +731,7 @@ class DatasetFittedConversationalBenchmark:
             raw_solution_found = conversation.get("skill_learned") or conversation.get(
                 "solution_found",
             )
-            solution_found = (
-                bool(raw_solution_found) if raw_solution_found is not None else None
-            )
+            solution_found = bool(raw_solution_found) if raw_solution_found is not None else None
 
         return {
             "session_id": session_id,
@@ -800,9 +755,7 @@ class DatasetFittedConversationalBenchmark:
         }
 
     def _select_skills(self, real_records: list[dict[str, Any]]) -> list[str]:
-        required_labels = (
-            set(MASTERY_GROUPS) if self.require_both_mastery_groups else None
-        )
+        required_labels = set(MASTERY_GROUPS) if self.require_both_mastery_groups else None
         return select_top_skills_by_count(
             real_records,
             self.max_skills,
@@ -854,10 +807,7 @@ class DatasetFittedConversationalBenchmark:
                     "sampling_weight": sampling_weight,
                 }
                 sampled_records.extend(
-                    [
-                        {**record, "sampling_weight": sampling_weight}
-                        for record in sampled_group
-                    ],
+                    [{**record, "sampling_weight": sampling_weight} for record in sampled_group],
                 )
 
         sampled_records.sort(
@@ -926,9 +876,7 @@ class DatasetFittedConversationalBenchmark:
             item_skills=[record["target_skill_id"]],
             save_conversation=True,
             correct_answer=record.get("correct_answer", ""),
-            tutor_generation_metadata=(
-                tutor_generation_metadata if tutor_generation_metadata else None
-            ),
+            tutor_generation_metadata=(tutor_generation_metadata if tutor_generation_metadata else None),
             classification_model=self.classification_model,
         )
         dialogue_history = [
@@ -1065,12 +1013,8 @@ class DatasetFittedConversationalBenchmark:
             weight = float(record.get("sampling_weight", 1.0))
             total_weight += weight
             valid_records += 1
-            questions_weighted_sum += (
-                float(metrics.get("questions_per_interrogative_turn", 0.0)) * weight
-            )
-            words_weighted_sum += (
-                float(metrics.get("avg_words_per_learner_turn", 0.0)) * weight
-            )
+            questions_weighted_sum += float(metrics.get("questions_per_interrogative_turn", 0.0)) * weight
+            words_weighted_sum += float(metrics.get("avg_words_per_learner_turn", 0.0)) * weight
             string_length_weighted_sum += (
                 float(
                     metrics.get("avg_learner_turn_string_length", 0.0),
@@ -1079,9 +1023,7 @@ class DatasetFittedConversationalBenchmark:
             )
 
             error_bucket = str(metrics.get("error_count_bucket", "zero"))
-            error_bucket_counts[error_bucket] = (
-                error_bucket_counts.get(error_bucket, 0.0) + weight
-            )
+            error_bucket_counts[error_bucket] = error_bucket_counts.get(error_bucket, 0.0) + weight
 
             has_any_talk_move = bool(metrics.get("has_any_talk_move", False))
             any_talk_move_counts["yes" if has_any_talk_move else "no"] += weight
@@ -1091,9 +1033,7 @@ class DatasetFittedConversationalBenchmark:
                     error_yes_weights[code] = error_yes_weights.get(code, 0.0) + weight
             for move_name in TALK_MOVE_FIELDS:
                 if bool(metrics.get("talk_moves", {}).get(move_name, False)):
-                    talk_move_yes_weights[move_name] = (
-                        talk_move_yes_weights.get(move_name, 0.0) + weight
-                    )
+                    talk_move_yes_weights[move_name] = talk_move_yes_weights.get(move_name, 0.0) + weight
 
         def _binary_distribution(true_weight: float) -> dict[str, float]:
             return counts_to_distribution(
@@ -1104,15 +1044,9 @@ class DatasetFittedConversationalBenchmark:
         return {
             "n_records": valid_records,
             "total_weight": total_weight,
-            "questions_per_interrogative_turn_mean": (
-                questions_weighted_sum / total_weight if total_weight else 0.0
-            ),
-            "avg_words_per_learner_turn_mean": (
-                words_weighted_sum / total_weight if total_weight else 0.0
-            ),
-            "avg_learner_turn_string_length_mean": (
-                string_length_weighted_sum / total_weight if total_weight else 0.0
-            ),
+            "questions_per_interrogative_turn_mean": (questions_weighted_sum / total_weight if total_weight else 0.0),
+            "avg_words_per_learner_turn_mean": (words_weighted_sum / total_weight if total_weight else 0.0),
+            "avg_learner_turn_string_length_mean": (string_length_weighted_sum / total_weight if total_weight else 0.0),
             "error_count_bucket_distribution": counts_to_distribution(
                 error_bucket_counts,
                 ERROR_BUCKETS,
@@ -1126,11 +1060,7 @@ class DatasetFittedConversationalBenchmark:
                     "distribution": _binary_distribution(
                         float(error_yes_weights.get(code, 0.0)),
                     ),
-                    "yes_rate": (
-                        float(error_yes_weights.get(code, 0.0)) / total_weight
-                        if total_weight
-                        else 0.0
-                    ),
+                    "yes_rate": (float(error_yes_weights.get(code, 0.0)) / total_weight if total_weight else 0.0),
                 }
                 for code in ERROR_TYPE_FIELDS
             },
@@ -1140,9 +1070,7 @@ class DatasetFittedConversationalBenchmark:
                         float(talk_move_yes_weights.get(move_name, 0.0)),
                     ),
                     "yes_rate": (
-                        float(talk_move_yes_weights.get(move_name, 0.0)) / total_weight
-                        if total_weight
-                        else 0.0
+                        float(talk_move_yes_weights.get(move_name, 0.0)) / total_weight if total_weight else 0.0
                     ),
                 }
                 for move_name in TALK_MOVE_FIELDS
@@ -1167,21 +1095,15 @@ class DatasetFittedConversationalBenchmark:
         error_distances = {
             code: distribution_distance(
                 real_metrics.get("errors", {}).get(code, {}).get("distribution", {}),
-                simulated_metrics.get("errors", {})
-                .get(code, {})
-                .get("distribution", {}),
+                simulated_metrics.get("errors", {}).get(code, {}).get("distribution", {}),
                 BINARY_BUCKETS,
             )
             for code in ERROR_TYPE_FIELDS
         }
         talk_move_distances = {
             move_name: distribution_distance(
-                real_metrics.get("talk_moves", {})
-                .get(move_name, {})
-                .get("distribution", {}),
-                simulated_metrics.get("talk_moves", {})
-                .get(move_name, {})
-                .get("distribution", {}),
+                real_metrics.get("talk_moves", {}).get(move_name, {}).get("distribution", {}),
+                simulated_metrics.get("talk_moves", {}).get(move_name, {}).get("distribution", {}),
                 BINARY_BUCKETS,
             )
             for move_name in TALK_MOVE_FIELDS
@@ -1249,11 +1171,7 @@ class DatasetFittedConversationalBenchmark:
         selected_records_path: Path,
         real_metric_records_path: Path,
     ) -> dict[str, Any]:
-        successful_results = [
-            result
-            for result in sampled_results
-            if not result.get("initialization_failed", False)
-        ]
+        successful_results = [result for result in sampled_results if not result.get("initialization_failed", False)]
         initialization_failures = len(sampled_results) - len(successful_results)
 
         # ---------- by skill x scenario grouping ----------
@@ -1265,14 +1183,12 @@ class DatasetFittedConversationalBenchmark:
                 real_scen_group = [
                     record
                     for record in real_records
-                    if record["target_skill_id"] == skill_id
-                    and record.get("scenario") == scenario
+                    if record["target_skill_id"] == skill_id and record.get("scenario") == scenario
                 ]
                 simulated_scen_group = [
                     result
                     for result in successful_results
-                    if result["target_skill_id"] == skill_id
-                    and result.get("scenario") == scenario
+                    if result["target_skill_id"] == skill_id and result.get("scenario") == scenario
                 ]
                 if not real_scen_group and not simulated_scen_group:
                     continue  # skip absent scenarios
@@ -1283,10 +1199,7 @@ class DatasetFittedConversationalBenchmark:
                     simulated_metrics,
                 )
                 # solution_found stats for simulated group
-                solution_found_values = [
-                    1.0 if r.get("solution_found") else 0.0
-                    for r in simulated_scen_group
-                ]
+                solution_found_values = [1.0 if r.get("solution_found") else 0.0 for r in simulated_scen_group]
                 avg_solution_found = _mean(solution_found_values)
                 by_skill_scenario[scen_key] = {
                     "skill_id": skill_id,
@@ -1308,14 +1221,12 @@ class DatasetFittedConversationalBenchmark:
                 real_group = [
                     record
                     for record in real_records
-                    if record["target_skill_id"] == skill_id
-                    and record["mastery_group"] == mastery_group
+                    if record["target_skill_id"] == skill_id and record["mastery_group"] == mastery_group
                 ]
                 simulated_group = [
                     result
                     for result in successful_results
-                    if result["target_skill_id"] == skill_id
-                    and result["mastery_group"] == mastery_group
+                    if result["target_skill_id"] == skill_id and result["mastery_group"] == mastery_group
                 ]
                 real_metrics_mg = self._aggregate_group_metrics(real_group)
                 simulated_metrics_mg = self._aggregate_group_metrics(simulated_group)
@@ -1323,9 +1234,7 @@ class DatasetFittedConversationalBenchmark:
                     real_metrics_mg,
                     simulated_metrics_mg,
                 )
-                solution_found_mg = [
-                    1.0 if r.get("solution_found") else 0.0 for r in simulated_group
-                ]
+                solution_found_mg = [1.0 if r.get("solution_found") else 0.0 for r in simulated_group]
                 by_skill_mastery[group_name] = {
                     "skill_id": skill_id,
                     "mastery_group": mastery_group,
@@ -1337,65 +1246,39 @@ class DatasetFittedConversationalBenchmark:
                 }
         overall_distances = {
             "questions_per_interrogative_turn_abs_diff": _mean(
-                [
-                    distance["questions_per_interrogative_turn_abs_diff"]
-                    for distance in group_distances
-                ],
+                [distance["questions_per_interrogative_turn_abs_diff"] for distance in group_distances],
             ),
             "avg_words_per_learner_turn_abs_diff": _mean(
-                [
-                    distance["avg_words_per_learner_turn_abs_diff"]
-                    for distance in group_distances
-                ],
+                [distance["avg_words_per_learner_turn_abs_diff"] for distance in group_distances],
             ),
             "avg_learner_turn_string_length_abs_diff": _mean(
-                [
-                    distance["avg_learner_turn_string_length_abs_diff"]
-                    for distance in group_distances
-                ],
+                [distance["avg_learner_turn_string_length_abs_diff"] for distance in group_distances],
             ),
             "error_count_bucket_l1_distance": _mean(
-                [
-                    distance["error_count_bucket_distribution"]["l1_distance"]
-                    for distance in group_distances
-                ],
+                [distance["error_count_bucket_distribution"]["l1_distance"] for distance in group_distances],
             ),
             "has_any_talk_move_l1_distance": _mean(
-                [
-                    distance["has_any_talk_move_distribution"]["l1_distance"]
-                    for distance in group_distances
-                ],
+                [distance["has_any_talk_move_distribution"]["l1_distance"] for distance in group_distances],
             ),
             "errors": {
                 code: _mean(
-                    [
-                        distance["errors"][code]["l1_distance"]
-                        for distance in group_distances
-                    ],
+                    [distance["errors"][code]["l1_distance"] for distance in group_distances],
                 )
                 for code in ERROR_TYPE_FIELDS
             },
             "talk_moves": {
                 move_name: _mean(
-                    [
-                        distance["talk_moves"][move_name]["l1_distance"]
-                        for distance in group_distances
-                    ],
+                    [distance["talk_moves"][move_name]["l1_distance"] for distance in group_distances],
                 )
                 for move_name in TALK_MOVE_FIELDS
             },
             "overall_average_distance": _mean(
-                [
-                    distance["overall_group_average_distance"]
-                    for distance in group_distances
-                ],
+                [distance["overall_group_average_distance"] for distance in group_distances],
             ),
         }
 
         # overall solution_found rate across all successful simulated results
-        all_solution_found = [
-            1.0 if r.get("solution_found") else 0.0 for r in successful_results
-        ]
+        all_solution_found = [1.0 if r.get("solution_found") else 0.0 for r in successful_results]
         overall_solution_found_rate = _mean(all_solution_found)
 
         # ---- Aggregate composite scores ----

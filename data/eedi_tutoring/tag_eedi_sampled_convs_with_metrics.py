@@ -48,12 +48,8 @@ from evalconvolearn.benchmarks.realistic_benchmarks_from_conversation_data.datas
 DEFAULT_LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
 DEFAULT_INPUT = Path(__file__).resolve().with_name("all_conversations.jsonl")
-DEFAULT_OUTPUT = (
-    Path(__file__).resolve().with_name("all_conversations_with_metrics.jsonl")
-)
-DEFAULT_CACHE_PATH = (
-    Path(__file__).resolve().with_name("conversation_metrics_cache.json")
-)
+DEFAULT_OUTPUT = Path(__file__).resolve().with_name("all_conversations_with_metrics.jsonl")
+DEFAULT_CACHE_PATH = Path(__file__).resolve().with_name("conversation_metrics_cache.json")
 
 logger = logging.getLogger(__name__)
 
@@ -75,8 +71,7 @@ def setup_logging(log_level: str) -> None:
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Add benchmark-compatible conversation metrics and behavior labels "
-            "to stored Eedi tutoring conversations."
+            "Add benchmark-compatible conversation metrics and behavior labels to stored Eedi tutoring conversations."
         ),
     )
     parser.add_argument(

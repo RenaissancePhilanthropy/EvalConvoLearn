@@ -59,7 +59,7 @@ class FlexLearner(BaseLearner, ABC):
 
     mastered_skills: list[str] = []
     practice_history: list[dict] = []
-    practice_conversations_file: str | Path = ""
+    practice_conversations_file: str | Path | None = ""
     persona: dict = {}
     active_misconceptions: dict[str, str] = {}
 
@@ -91,7 +91,7 @@ class FlexLearner(BaseLearner, ABC):
     #  BaseLearner evaluation-only method implementations
     # ------------------------------------------------------------------ #
 
-    def has_skill(self, skill: str | Skill) -> bool:
+    def has_skill(self, skill: str | Skill, **kwargs: Any) -> bool:
         """Return ``True`` if the learner has mastered *skill*.
 
         For this transparent simulated learner, mastery is a direct
@@ -114,14 +114,14 @@ class FlexLearner(BaseLearner, ABC):
     def start_or_continue_conversation(
         self,
         conversation_history: list[dict],
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         raise NotImplementedError(
             "FlexLearner does not implement start_or_continue_conversation. "
             "Override this method to generate responses based on the conversation history.",
         )
 
-    def end_conversation(self, conversation_history: list[dict], **kwargs) -> None:
+    def end_conversation(self, conversation_history: list[dict], **kwargs: Any) -> None:
         raise NotImplementedError(
             "FlexLearner does not implement end_conversation. "
             "Override this method to perform any cleanup or final processing at the end of a conversation.",
@@ -212,11 +212,11 @@ class FlexLearner(BaseLearner, ABC):
             "Override this method to set up the learner's initial knowledge state from a list of skill IDs.",
         )
 
-    def set_up_initialization_tutor(self, **kwargs) -> BaseTutor | None:
+    def set_up_initialization_tutor(self, **kwargs: Any) -> BaseTutor | None:
         pass
 
     @abstractmethod
-    def initialize_learner_knowledge(self, *args, **kwargs: Any) -> None:
+    def initialize_learner_knowledge(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the learner's knowledge representation based on the current mastered skills and any additional kwargs.
 
         This is called after the learner is initialized with its initial set
@@ -240,10 +240,7 @@ class FlexLearner(BaseLearner, ABC):
         """
         relevant = []
         for skill in item_skills:
-            if (
-                skill.id not in self.mastered_skills
-                and skill.id in self.active_misconceptions
-            ):
+            if skill.id not in self.mastered_skills and skill.id in self.active_misconceptions:
                 relevant.append(
                     f"- {skill.description}: {self.active_misconceptions[skill.id]}",
                 )
@@ -296,11 +293,7 @@ class FlexLearner(BaseLearner, ABC):
         )
 
         response_length_instruction = self._get_response_length_instruction()
-        style_line = (
-            f"\nResponse style: {response_length_instruction}"
-            if response_length_instruction
-            else ""
-        )
+        style_line = f"\nResponse style: {response_length_instruction}" if response_length_instruction else ""
 
         misconceptions_text = self.get_misconceptions_for_skills(item_skills)
         misconceptions_line = (
@@ -377,11 +370,7 @@ Return your reasoning and your response to the tutor.
         )
 
         response_length_instruction = self._get_response_length_instruction()
-        style_line = (
-            f"\nResponse style: {response_length_instruction}"
-            if response_length_instruction
-            else ""
-        )
+        style_line = f"\nResponse style: {response_length_instruction}" if response_length_instruction else ""
 
         user_prompt = f"""
 You are a novice student learning mathematics and working on the math problem below.
@@ -436,9 +425,7 @@ Return your reasoning and your response to the tutor including your problem solu
         not yet mastered themselves.
         """
         return [
-            skill
-            for skill in self.skill_space
-            if skill.id not in self.mastered_skills and self.can_learn_skill(skill)
+            skill for skill in self.skill_space if skill.id not in self.mastered_skills and self.can_learn_skill(skill)
         ]
 
     def forget_skill(self, skill_id: str | Skill) -> None:
@@ -505,9 +492,9 @@ Return your reasoning and your response to the tutor including your problem solu
                 learnable_skills = self.get_learnable_skills()
                 learnable_skills = [sk for sk in learnable_skills if sk in item_skills]
 
-                assert not (
-                    solved_problem and use_past_conversations
-                ), "If the problem was solved, we do not allow using past conversations."
+                assert not (solved_problem and use_past_conversations), (
+                    "If the problem was solved, we do not allow using past conversations."
+                )
                 if not use_past_conversations and solved_problem:
                     learned = []
                     for sk in learnable_skills:
@@ -546,19 +533,19 @@ Return your reasoning and your response to the tutor including your problem solu
                 if use_past_conversations:
                     past_conversations = []
                     for lsk in learnable_skills:
-                        skill_conversations = (
-                            self.retrieve_practice_conversations_by_skill(
-                                skill=lsk,
-                            )
+                        skill_conversations = self.retrieve_practice_conversations_by_skill(
+                            skill=lsk,
                         )
                         for conv in skill_conversations:
                             if conv not in past_conversations:
                                 past_conversations.append(conv)
-                    past_conversations_string = "\nPast conversations where the learner practiced some of the learnable skills:\n"
+                    past_conversations_string = (
+                        "\nPast conversations where the learner practiced some of the learnable skills:\n"
+                    )
                     if len(past_conversations) > 0:
                         past_conversations_string = "\n\n".join(
                             [
-                                f"Past conversation {i+1}:\n"
+                                f"Past conversation {i + 1}:\n"
                                 + render_conversation_messages(
                                     messages=conv,
                                     roles_names={
@@ -571,10 +558,7 @@ Return your reasoning and your response to the tutor including your problem solu
                         )
                 learnable_skills_list = (
                     "\n".join(
-                        [
-                            f"{i+1}. {sk.description}"
-                            for i, sk in enumerate(learnable_skills)
-                        ],
+                        [f"{i + 1}. {sk.description}" for i, sk in enumerate(learnable_skills)],
                     )
                     if learnable_skills
                     else "No learnable skills. Answer with []"
@@ -582,9 +566,7 @@ Return your reasoning and your response to the tutor including your problem solu
 
                 correct_answer_text = ""
                 if correct_answer:
-                    correct_answer_text = (
-                        f"\nCorrect answer to the practice item: {correct_answer}\n"
-                    )
+                    correct_answer_text = f"\nCorrect answer to the practice item: {correct_answer}\n"
 
                 learning_prompt = f"""
                 You are an experienced educator evaluating whether a learner has demonstrated mastery of skills after a tutoring exchange.
@@ -619,10 +601,7 @@ Return your reasoning and your response to the tutor including your problem solu
                     completion.choices[0].message.parsed.learned_skills,
                 )
 
-                learned_skills_ids = [
-                    int(i) - 1
-                    for i in completion.choices[0].message.parsed.learned_skills
-                ]
+                learned_skills_ids = [int(i) - 1 for i in completion.choices[0].message.parsed.learned_skills]
                 learned_skills = [learnable_skills[i] for i in learned_skills_ids]
 
                 for sk in learned_skills:
@@ -681,9 +660,7 @@ Return your reasoning and your response to the tutor including your problem solu
                     )
                 answer_choices_text = ""
                 if answer_choices:
-                    valid_letters = [
-                        chr(ord("A") + i) for i in range(len(answer_choices))
-                    ]
+                    valid_letters = [chr(ord("A") + i) for i in range(len(answer_choices))]
                     answer_choices_text = "\n".join(
                         [
                             f"{letter}. {choice}"
@@ -733,15 +710,15 @@ Reply with ONLY the letter, no other text.
 If no choices are provided, return a specific number or measurement (include units) that is incorrect.
 """
                 else:
-                    required_knowledge_text = (
-                        self.get_required_knowledge_to_answer_practice_item(
-                            practice_item=practice_item_text,
-                            practice_item_skills=practice_item_skills or [],
-                            knowledge_attrs=None,
-                        )
+                    required_knowledge_text = self.get_required_knowledge_to_answer_practice_item(
+                        practice_item=practice_item_text,
+                        practice_item_skills=practice_item_skills or [],
+                        knowledge_attrs=None,
                     )
                     if answer_choices and answer_choices_text:
-                        answer_choices_text = f"Answer choices, preceeded by their A, B, C, or D labels:\n{answer_choices_text}"
+                        answer_choices_text = (
+                            f"Answer choices, preceeded by their A, B, C, or D labels:\n{answer_choices_text}"
+                        )
                         response_instructions = (
                             "CRITICAL RULES:\n"
                             "1. If you have the required skill in your mastered list above:\n"
@@ -758,7 +735,9 @@ If no choices are provided, return a specific number or measurement (include uni
                         )
                     else:
                         answer_choices_text = ""
-                        response_instructions = "If no choices are provided, return your reasoning and your response with explanations."
+                        response_instructions = (
+                            "If no choices are provided, return your reasoning and your response with explanations."
+                        )
                     answer_prompt = f"""
 You are a student taking a placement test.
 Answer the question correctly if your knowledge contains enough knowledge related to the skills being tested.

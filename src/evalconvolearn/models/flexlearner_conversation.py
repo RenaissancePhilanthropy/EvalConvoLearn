@@ -1,8 +1,9 @@
 import logging
 import os
+from collections.abc import Generator
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated, Any, Literal, TypedDict
+from typing import Annotated, Any, Literal, TypedDict, cast
 
 from dotenv import load_dotenv
 from langchain_core.runnables import RunnableConfig
@@ -10,6 +11,7 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.config import get_stream_writer
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
+from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command, interrupt
 from openai import OpenAI
 from pydantic import BaseModel, Field, PrivateAttr
@@ -65,9 +67,7 @@ class ConversationState(TypedDict):
     practice_item: str
     messages: Annotated[list, add_messages]
     pct_problem_skills_mastered: float
-    item_associated_skills: list[
-        Skill
-    ]  # skills with id and descriptions - inferred real time for the item.
+    item_associated_skills: list[Skill]  # skills with id and descriptions - inferred real time for the item.
     learner_mastered_skills: list[Skill]
     mastered_problem_skills: list[Skill]
     learner_skill_paths: list[list[Skill]]
@@ -103,7 +103,7 @@ class ConversationGraph(BaseModel):
     # Allow arbitrary types for the OpenAI client
     model_config = {"arbitrary_types_allowed": True}
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         """Initialize ConversationGraph."""
         super().__init__(**data)
 
@@ -116,7 +116,7 @@ class ConversationGraph(BaseModel):
         # instance logger
         self._logger = logging.LoggerAdapter(logger, {"conversation_id": self.id})
 
-    def get_memory_path(self):
+    def get_memory_path(self) -> None:
         """Get the path to the SQLite database for graph memory."""
         # build the sqlite db
         DB_CHECKPOINTS = "data/checkpoints"
@@ -127,11 +127,10 @@ class ConversationGraph(BaseModel):
             # use time to get timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             self.graph_memory_db_path = str(
-                DB_CHECKPOINTS_path
-                / f"{timestamp}_conversation_{self.id}_graph_memory.db",
+                DB_CHECKPOINTS_path / f"{timestamp}_conversation_{self.id}_graph_memory.db",
             )
 
-    def initialize_confusion_style(self):
+    def initialize_confusion_style(self) -> None:
         """Initialize the confusion resolution style based on tutor metadata."""
         if not self.resolve_confusion_style:
             self.resolve_confusion_style = """Continue the conversation by choosing one of the following talk moves:
@@ -140,7 +139,7 @@ class ConversationGraph(BaseModel):
         - Providing evidence or reasoning: Explain your thinking, provide evidence, talk about your reasoning
         """
 
-    def print_graph(self, compiled_graph):
+    def print_graph(self, compiled_graph: Any) -> None:
         output_dir = "docs/conversations/"
         os.makedirs(output_dir, exist_ok=True)
         output_path = os.path.join(output_dir, "graph.png")
@@ -153,14 +152,14 @@ class ConversationGraph(BaseModel):
         try:
             with SqliteSaver.from_conn_string(str(self.graph_memory_db_path)) as memory:
                 compiled_graph = self.compile_graph(memory=memory)
-                config = {"configurable": {"thread_id": session_id}}
+                config = cast(RunnableConfig, {"configurable": {"thread_id": session_id}})
                 state_snapshot = compiled_graph.get_state(config)
                 return state_snapshot.values
         except Exception:
             self._logger.exception("Error retrieving final state.")
             return {}
 
-    def compile_graph(self, memory: Any = None) -> StateGraph:
+    def compile_graph(self, memory: Any = None) -> CompiledStateGraph:
         """Compile langgraph for the conversation."""
         graph_builder = StateGraph(ConversationState)
 
@@ -251,9 +250,7 @@ class ConversationGraph(BaseModel):
     def initialize_state(self, state: ConversationState) -> dict:
         """Initialize the conversation state with empty values for a new conversation."""
         try:
-            assert (
-                self.practice_item is not None
-            ), "Practice item must be provided at the start of the conversation."
+            assert self.practice_item is not None, "Practice item must be provided at the start of the conversation."
 
             # get the associated skills for the problem text
             if isinstance(self.practice_item, str):
@@ -263,19 +260,14 @@ class ConversationGraph(BaseModel):
                 )
                 practice_item_text = self.practice_item
             elif isinstance(self.practice_item, PracticeItem):
-                problem_skills = [
-                    self.skill_space[sk_id]
-                    for sk_id in self.practice_item.associated_skills
-                ]
+                problem_skills = [self.skill_space[sk_id] for sk_id in self.practice_item.associated_skills]
                 practice_item_text = self.practice_item.text
             else:
                 raise ValueError(
                     "practice_item must be either a string or a PracticeItem instance.",
                 )
 
-            mastered_skills = [
-                self.skill_space[sk_id] for sk_id in self.learner.mastered_skills
-            ]
+            mastered_skills = [self.skill_space[sk_id] for sk_id in self.learner.mastered_skills]
 
             mastered_problem_skills = []
             # get skills intersection
@@ -298,7 +290,7 @@ class ConversationGraph(BaseModel):
                             ),
                         )
             self._logger.debug(
-                f"Initialized conversation state with {pct_mastered*100:.2f}% problem skills mastered."
+                f"Initialized conversation state with {pct_mastered * 100:.2f}% problem skills mastered."
                 f"Item associated skills: {problem_skills},"
                 f"Mastered skills: {mastered_skills},"
                 f"Mastered problem skills: {mastered_problem_skills},"
@@ -327,6 +319,7 @@ class ConversationGraph(BaseModel):
             }
         except Exception:
             logger.exception("Error initializing state.")
+            raise
 
     def check_learner_practiced_all_skills(
         self,
@@ -389,6 +382,7 @@ class ConversationGraph(BaseModel):
             )
             # Track tokens
             usage = completion.usage
+            assert usage is not None
             current_tokens = state.get(
                 "tokens_used",
                 {"input_tokens": 0, "output_tokens": 0},
@@ -398,13 +392,14 @@ class ConversationGraph(BaseModel):
             )
             updated_tokens = {
                 "input_tokens": current_tokens["input_tokens"] + usage.prompt_tokens,
-                "output_tokens": current_tokens["output_tokens"]
-                + usage.completion_tokens,
+                "output_tokens": current_tokens["output_tokens"] + usage.completion_tokens,
             }
 
             # subtract 1 to the returned ids to match original learnable skills
-            is_learner_ready = completion.choices[0].message.parsed.is_learner_ready
-            reasoning = completion.choices[0].message.parsed.reasoning
+            parsed = completion.choices[0].message.parsed
+            assert parsed is not None
+            is_learner_ready = parsed.is_learner_ready
+            reasoning = parsed.reasoning
             self._logger.debug(
                 f"Check learner readiness: {reasoning}",
             )
@@ -419,6 +414,7 @@ class ConversationGraph(BaseModel):
             )
         except Exception:
             logger.exception("Error checking learner practicing all skills.")
+            raise
 
     def _render_skill_paths(self, skill_paths: list[list[Skill]]) -> str:
         """Render skill paths for prompts."""
@@ -457,14 +453,10 @@ class ConversationGraph(BaseModel):
                     f"[DEBUG - learning_from_conversation] Learning is disabled for this conversation. should respond to problem: {should_respond_to_problem}",
                 )
                 return Command(
-                    goto=(
-                        "propose_problem_solution"
-                        if should_respond_to_problem
-                        else "conversation_ended"
-                    ),
+                    goto=("propose_problem_solution" if should_respond_to_problem else "conversation_ended"),
                 )
             # get current session id from config
-            session_id = config["configurable"]["thread_id"]
+            session_id = (config.get("configurable") or {})["thread_id"]
 
             # Get correct answer from practice item if available
             correct_answer = ""
@@ -474,8 +466,7 @@ class ConversationGraph(BaseModel):
             # save current learner mastered skills before learning:
             # mastered_skills is a list[str] of skill IDs on FlexLearner
             mastered_skills_before_learning = [
-                sk.id if hasattr(sk, "id") else sk
-                for sk in self.learner.mastered_skills
+                sk.id if hasattr(sk, "id") else sk for sk in self.learner.mastered_skills
             ]
 
             # Learner learns from the conversation if needed:
@@ -529,11 +520,7 @@ class ConversationGraph(BaseModel):
                 "practice_item_text": state.get("practice_item", ""),
                 "dialogue_history": dialogue_history,
                 "item_skills": [
-                    (
-                        sk.id
-                        if hasattr(sk, "id")
-                        else sk.get("id", "") if isinstance(sk, dict) else str(sk)
-                    )
+                    (sk.id if hasattr(sk, "id") else sk.get("id", "") if isinstance(sk, dict) else str(sk))
                     for sk in item_associated_skills
                 ],
                 "item_skill_prerequisites": _item_skill_prerequisites,
@@ -563,8 +550,9 @@ class ConversationGraph(BaseModel):
             )
         except Exception:
             logger.exception("Error in learning from conversation.")
+            raise
 
-    def propose_problem_solution(self, state: ConversationState):
+    def propose_problem_solution(self, state: ConversationState) -> dict | None:
         """The learner should reach this node when ready to propose a final solution.
         Use the practice item problem and the learner's mastery state to formulate an answer.
         """
@@ -603,6 +591,7 @@ class ConversationGraph(BaseModel):
             )
             # Track tokens
             usage = completion.usage
+            assert usage is not None
             current_tokens = state.get(
                 "tokens_used",
                 {"input_tokens": 0, "output_tokens": 0},
@@ -612,12 +601,13 @@ class ConversationGraph(BaseModel):
             )
             updated_tokens = {
                 "input_tokens": current_tokens["input_tokens"] + usage.prompt_tokens,
-                "output_tokens": current_tokens["output_tokens"]
-                + usage.completion_tokens,
+                "output_tokens": current_tokens["output_tokens"] + usage.completion_tokens,
             }
 
             # subtract 1 to the returned ids to match original learnable skills
-            learner_response = completion.choices[0].message.parsed.response
+            parsed = completion.choices[0].message.parsed
+            assert parsed is not None
+            learner_response = parsed.response
             # stream learner response
             writer = get_stream_writer()
             writer({"learner": learner_response})
@@ -628,7 +618,7 @@ class ConversationGraph(BaseModel):
         except Exception:
             logger.exception("Error when learner proposed a solution.")
 
-    def tutor_problem_solution_response(self, state: ConversationState):
+    def tutor_problem_solution_response(self, state: ConversationState) -> dict:
         """Wait for tutor's response during problem solution and log it."""
         # use Command when running a conversation to stop the graph execution here and resume with tutor input
         teacher_message = interrupt("placeholder_tutor_input")
@@ -644,7 +634,7 @@ class ConversationGraph(BaseModel):
             "turn_number": tn,
         }
 
-    def tutor_practice_response(self, state: ConversationState):
+    def tutor_practice_response(self, state: ConversationState) -> dict:
         """Wait for tutor's response during practice and log it."""
         self._logger.info("Waiting for tutor's response.")
 
@@ -662,7 +652,7 @@ class ConversationGraph(BaseModel):
             "turn_number": tn,
         }
 
-    def practice_conversation(self, state: ConversationState):
+    def practice_conversation(self, state: ConversationState) -> dict | None:
         """Depending on its current mastery level, the learner should struggle and follow-up on the tutor's response.
         Start or continue the confusion step until the tutor resolved it.
 
@@ -717,21 +707,20 @@ class ConversationGraph(BaseModel):
                 )
                 # Track tokens
                 usage = completion.usage
+                assert usage is not None
                 self._logger.debug(
                     f"[DEBUG - practice_conversation] Current tokens before learner response: {current_tokens} - new tokens: {usage}",
                 )
                 updated_tokens = {
-                    "input_tokens": current_tokens["input_tokens"]
-                    + usage.prompt_tokens,
-                    "output_tokens": current_tokens["output_tokens"]
-                    + usage.completion_tokens,
+                    "input_tokens": current_tokens["input_tokens"] + usage.prompt_tokens,
+                    "output_tokens": current_tokens["output_tokens"] + usage.completion_tokens,
                 }
 
                 # subtract 1 to the returned ids to match original learnable skills
-                learner_current_confusion = completion.choices[
-                    0
-                ].message.parsed.current_confusion
-                learner_response = completion.choices[0].message.parsed.response
+                parsed = completion.choices[0].message.parsed
+                assert parsed is not None
+                learner_current_confusion = parsed.current_confusion
+                learner_response = parsed.response
 
                 self._logger.debug(
                     f"Started new confusion: {learner_current_confusion}",
@@ -769,14 +758,16 @@ class ConversationGraph(BaseModel):
             )
             # Track tokens
             usage = completion.usage
+            assert usage is not None
             updated_tokens = {
                 "input_tokens": current_tokens["input_tokens"] + usage.prompt_tokens,
-                "output_tokens": current_tokens["output_tokens"]
-                + usage.completion_tokens,
+                "output_tokens": current_tokens["output_tokens"] + usage.completion_tokens,
             }
 
             # subtract 1 to the returned ids to match original learnable skills
-            learner_response = completion.choices[0].message.parsed.response
+            parsed = completion.choices[0].message.parsed
+            assert parsed is not None
+            learner_response = parsed.response
 
             # stream learner response
             writer = get_stream_writer()
@@ -855,6 +846,7 @@ class ConversationGraph(BaseModel):
         )
         # Track tokens
         usage = completion.usage
+        assert usage is not None
         current_tokens = state.get(
             "tokens_used",
             {"input_tokens": 0, "output_tokens": 0},
@@ -868,7 +860,9 @@ class ConversationGraph(BaseModel):
         }
 
         # subtract 1 to the returned ids to match original learnable skills
-        resolved_confusion = completion.choices[0].message.parsed.resolved_confusion
+        parsed = completion.choices[0].message.parsed
+        assert parsed is not None
+        resolved_confusion = parsed.resolved_confusion
         self._logger.info(f"Tutor resolved confusion: {resolved_confusion}")
         if resolved_confusion:
             # current confusion is set back to empty
@@ -920,6 +914,7 @@ class ConversationGraph(BaseModel):
             )
             # Track tokens
             usage = completion.usage
+            assert usage is not None
             current_tokens = state.get(
                 "tokens_used",
                 {"input_tokens": 0, "output_tokens": 0},
@@ -929,13 +924,12 @@ class ConversationGraph(BaseModel):
             )
             updated_tokens = {
                 "input_tokens": current_tokens["input_tokens"] + usage.prompt_tokens,
-                "output_tokens": current_tokens["output_tokens"]
-                + usage.completion_tokens,
+                "output_tokens": current_tokens["output_tokens"] + usage.completion_tokens,
             }
 
-            conversation_should_end = completion.choices[
-                0
-            ].message.parsed.conversation_should_end
+            parsed = completion.choices[0].message.parsed
+            assert parsed is not None
+            conversation_should_end = parsed.conversation_should_end
             if conversation_should_end or (
                 state.get("turn_number", 0) >= self.max_turns + 5
             ):  # allowing 5 turns to propose problem solution after max turns
@@ -952,17 +946,16 @@ class ConversationGraph(BaseModel):
             )
         except Exception:
             logger.exception("Error checking conversation end.")
+            raise
 
-    def conversation_ended(self, state: ConversationState):
+    def conversation_ended(self, state: ConversationState) -> dict:
         """Handle conversation end"""
         system_message = f"Conversation ended at turn {state['turn_number']}."
 
         learned_skills_ids = state.get("learned_skills_ids", ())
 
         if self.learning_enabled:
-            system_message += (
-                f" Learner mastered new skills: {','.join(learned_skills_ids)}"
-            )
+            system_message += f" Learner mastered new skills: {','.join(learned_skills_ids)}"
         else:
             system_message += " Learning disabled for this conversation."
 
@@ -984,17 +977,20 @@ class ConversationGraph(BaseModel):
         session_id: str,
         start_or_resume_conversation: Literal["start", "resume"],
         tutor_message: str = "",
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> Generator[str, None, None]:
         """Run an example conversation with sqlite memory."""
         try:
             with SqliteSaver.from_conn_string(str(self.graph_memory_db_path)) as memory:
                 compiled_graph = self.compile_graph(memory=memory)
                 # LangGraph required config for resuming conversations
-                config = {
-                    "configurable": {"thread_id": session_id},
-                    "recursion_limit": 150,
-                }
+                config = cast(
+                    RunnableConfig,
+                    {
+                        "configurable": {"thread_id": session_id},
+                        "recursion_limit": 150,
+                    },
+                )
                 if start_or_resume_conversation == "start":
                     command = {}  # initial state modifications if needed
                 else:  # resume a conversation

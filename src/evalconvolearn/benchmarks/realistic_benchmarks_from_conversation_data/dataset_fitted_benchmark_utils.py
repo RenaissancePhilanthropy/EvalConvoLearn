@@ -106,11 +106,7 @@ def distribution_distance(
     labels: Sequence[str],
 ) -> dict[str, Any]:
     """Return the L1 distance and deltas between two discrete distributions."""
-    deltas = {
-        label: simulated_distribution.get(label, 0.0)
-        - real_distribution.get(label, 0.0)
-        for label in labels
-    }
+    deltas = {label: simulated_distribution.get(label, 0.0) - real_distribution.get(label, 0.0) for label in labels}
     l1_distance = sum(abs(value) for value in deltas.values())
     return {
         "l1_distance": l1_distance,
@@ -136,9 +132,7 @@ def select_top_skills_by_count(
             grouped[skill_id].append(record)
 
     if selected_skills_override:
-        return [
-            skill_id for skill_id in selected_skills_override if skill_id in grouped
-        ][:max_skills]
+        return [skill_id for skill_id in selected_skills_override if skill_id in grouped][:max_skills]
 
     ranked_skills = sorted(
         grouped,
@@ -235,11 +229,7 @@ def _jsd_log2(p_vec: list[float], q_vec: list[float]) -> float:
     m = [(p[i] + q[i]) / 2.0 for i in range(len(p))]
 
     def _kl(a: list[float], b: list[float]) -> float:
-        return sum(
-            ai * math.log2(ai / bi)
-            for ai, bi in zip(a, b, strict=False)
-            if ai > 0.0 and bi > 0.0
-        )
+        return sum(ai * math.log2(ai / bi) for ai, bi in zip(a, b, strict=False) if ai > 0.0 and bi > 0.0)
 
     return max(0.0, min(1.0, 0.5 * _kl(p, m) + 0.5 * _kl(q, m)))
 
@@ -299,9 +289,7 @@ def compute_aggregate_scores(
     ``conversational``, ``eval_convo_learn``.
     """
     # ---- Scenario weights ----
-    scenario_counts: dict[str, int] = Counter(
-        r.get("scenario", "") for r in real_records if r.get("scenario")
-    )
+    scenario_counts: dict[str, int] = Counter(r.get("scenario", "") for r in real_records if r.get("scenario"))
     total_real = sum(scenario_counts.values()) or 1
     scenario_weights = {s: scenario_counts.get(s, 0) / total_real for s in SCENARIOS}
 
@@ -323,9 +311,7 @@ def compute_aggregate_scores(
     if real_w_range <= 0.0:
         real_w_range = 1.0
     all_real_w_log = [math.log1p(v) for v in all_real_w]
-    real_w_log_range_global = (
-        (max(all_real_w_log) - min(all_real_w_log)) if len(all_real_w_log) >= 2 else 1.0
-    ) or 1.0
+    real_w_log_range_global = ((max(all_real_w_log) - min(all_real_w_log)) if len(all_real_w_log) >= 2 else 1.0) or 1.0
 
     # ---- Learning behavior (LB) score ----
     lb_per_scenario: dict[str, Any] = {}
@@ -342,10 +328,7 @@ def compute_aggregate_scores(
                 and r.get("solution_found") is not None
             ]
             sim_grp = [
-                r
-                for r in successful_results
-                if r.get("target_skill_id") == skill_id
-                and r.get("scenario") == scenario
+                r for r in successful_results if r.get("target_skill_id") == skill_id and r.get("scenario") == scenario
             ]
             if real_grp:
                 real_skill_rates[skill_id] = _mean(
@@ -359,9 +342,7 @@ def compute_aggregate_scores(
                 per_skill_ae[skill_id] = abs(
                     real_skill_rates[skill_id] - sim_skill_rates[skill_id],
                 )
-        macro_mae: float | None = (
-            _mean(list(per_skill_ae.values())) if per_skill_ae else None
-        )
+        macro_mae: float | None = _mean(list(per_skill_ae.values())) if per_skill_ae else None
         lb_per_scenario[scenario] = {
             "weight": scenario_weights[scenario],
             "has_real_solution_data": bool(real_skill_rates),
@@ -394,10 +375,7 @@ def compute_aggregate_scores(
     ) -> list[float]:
         distribs = []
         for r in records:
-            flags = [
-                1.0 if r["conversation_metrics"].get(metric_key, {}).get(k) else 0.0
-                for k in keys
-            ]
+            flags = [1.0 if r["conversation_metrics"].get(metric_key, {}).get(k) else 0.0 for k in keys]
             if conditional_on_presence and sum(flags) == 0.0:
                 continue
             if sum(flags) > 0:
@@ -411,16 +389,12 @@ def compute_aggregate_scores(
     conv_per_scenario: dict[str, Any] = {}
     for scenario in SCENARIOS:
         real_scen = [
-            r
-            for r in real_records
-            if r.get("scenario") == scenario
-            and isinstance(r.get("conversation_metrics"), dict)
+            r for r in real_records if r.get("scenario") == scenario and isinstance(r.get("conversation_metrics"), dict)
         ]
         sim_scen = [
             r
             for r in successful_results
-            if r.get("scenario") == scenario
-            and isinstance(r.get("conversation_metrics"), dict)
+            if r.get("scenario") == scenario and isinstance(r.get("conversation_metrics"), dict)
         ]
 
         real_q_vals = [
@@ -435,14 +409,8 @@ def compute_aggregate_scores(
             )
             for r in sim_scen
         ]
-        real_w_vals = [
-            float(r["conversation_metrics"].get("avg_words_per_learner_turn", 0.0))
-            for r in real_scen
-        ]
-        sim_w_vals = [
-            float(r["conversation_metrics"].get("avg_words_per_learner_turn", 0.0))
-            for r in sim_scen
-        ]
+        real_w_vals = [float(r["conversation_metrics"].get("avg_words_per_learner_turn", 0.0)) for r in real_scen]
+        sim_w_vals = [float(r["conversation_metrics"].get("avg_words_per_learner_turn", 0.0)) for r in sim_scen]
         q_w1 = _wasserstein1_normalized(real_q_vals, sim_q_vals, val_range=None)
         w_w1 = _wasserstein1_normalized(real_w_vals, sim_w_vals, val_range=None)
         real_w_log = [math.log1p(v) for v in real_w_vals]
@@ -494,14 +462,8 @@ def compute_aggregate_scores(
                 )
                 for r in sim_sk
             ]
-            real_sk_w = [
-                float(r["conversation_metrics"].get("avg_words_per_learner_turn", 0.0))
-                for r in real_sk
-            ]
-            sim_sk_w = [
-                float(r["conversation_metrics"].get("avg_words_per_learner_turn", 0.0))
-                for r in sim_sk
-            ]
+            real_sk_w = [float(r["conversation_metrics"].get("avg_words_per_learner_turn", 0.0)) for r in real_sk]
+            sim_sk_w = [float(r["conversation_metrics"].get("avg_words_per_learner_turn", 0.0)) for r in sim_sk]
             real_sk_w_log = [math.log1p(v) for v in real_sk_w]
             sim_sk_w_log = [math.log1p(v) for v in sim_sk_w]
             per_skill_breakdown[skill_id] = {
@@ -635,24 +597,12 @@ def compute_standard_errors(
         per_run_scores.append(
             {
                 "run_id": run_id,
-                "q_w1": sum(
-                    d["questions_per_interrogative_turn_w1"] * d["weight"]
-                    for d in conv_per_scen.values()
-                )
+                "q_w1": sum(d["questions_per_interrogative_turn_w1"] * d["weight"] for d in conv_per_scen.values())
                 / total_w,
-                "w_w1_log": sum(
-                    d["avg_words_per_learner_turn_w1_log"] * d["weight"]
-                    for d in conv_per_scen.values()
-                )
+                "w_w1_log": sum(d["avg_words_per_learner_turn_w1_log"] * d["weight"] for d in conv_per_scen.values())
                 / total_w,
-                "error_jsd": sum(
-                    d["error_types_jsd"] * d["weight"] for d in conv_per_scen.values()
-                )
-                / total_w,
-                "talk_jsd": sum(
-                    d["talk_moves_jsd"] * d["weight"] for d in conv_per_scen.values()
-                )
-                / total_w,
+                "error_jsd": sum(d["error_types_jsd"] * d["weight"] for d in conv_per_scen.values()) / total_w,
+                "talk_jsd": sum(d["talk_moves_jsd"] * d["weight"] for d in conv_per_scen.values()) / total_w,
                 "conv_score": run_agg["conversational"]["weighted_conv_score"],
                 "lb_score": run_agg["learning_behavior"]["weighted_lb_score"],
                 "eval_convo_learn_score": run_agg["eval_convo_learn"]["score"],

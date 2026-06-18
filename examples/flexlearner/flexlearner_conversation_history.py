@@ -7,6 +7,7 @@ maintained as a prerequisite guardrail but is never shown in prompts.
 """
 
 import json
+from typing import Any
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -34,9 +35,7 @@ class ConversationHistoryLearner(FlexLearner):
     def get_knowledge_description(self) -> str:
         if not self.knowledge_items:
             return "You have no prior knowledge yet."
-        return "What you have learned so far:\n" + "\n".join(
-            f"- {item}" for item in self.knowledge_items
-        )
+        return "What you have learned so far:\n" + "\n".join(f"- {item}" for item in self.knowledge_items)
 
     def get_knowledge_for_problem(
         self,
@@ -54,9 +53,7 @@ class ConversationHistoryLearner(FlexLearner):
     ) -> str:
         knowledge = self.get_knowledge_description()
         associated_skills = (
-            "\n".join(
-                f"- {skill.id}: {skill.description}" for skill in practice_item_skills
-            )
+            "\n".join(f"- {skill.id}: {skill.description}" for skill in practice_item_skills)
             if practice_item_skills
             else "None provided"
         )
@@ -99,7 +96,7 @@ class ConversationHistoryLearner(FlexLearner):
         except Exception as exc:
             print(f"Error updating knowledge from conversation: {exc}")
 
-    def initialize_learner_knowledge(self, *args, **kwargs) -> None:
+    def initialize_learner_knowledge(self, *args: Any, **kwargs: Any) -> None:
         """Initialize ``knowledge_items`` from mastered skills or explicit items.
 
         Accepted kwargs:

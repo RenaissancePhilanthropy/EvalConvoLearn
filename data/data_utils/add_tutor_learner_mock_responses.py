@@ -268,8 +268,7 @@ def main() -> int:
     already_present = [c for c in RESPONSE_COLUMNS if c in fieldnames]
     if already_present:
         print(
-            f"Note: the following columns already exist and will only be filled where empty: "
-            f"{already_present}",
+            f"Note: the following columns already exist and will only be filled where empty: {already_present}",
             file=sys.stderr,
         )
     else:

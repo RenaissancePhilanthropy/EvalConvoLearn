@@ -107,11 +107,7 @@ def run_base_learner_conversation(
     session_id = session_id or str(uuid.uuid4())
     if isinstance(practice_item, PracticeItem):
         problem_text = practice_item.text
-        resolved_skills: list[str] = (
-            item_skills
-            if item_skills is not None
-            else list(practice_item.associated_skills)
-        )
+        resolved_skills: list[str] = item_skills if item_skills is not None else list(practice_item.associated_skills)
     else:
         problem_text = practice_item
         resolved_skills = item_skills or []
@@ -195,7 +191,7 @@ def run_base_learner_conversation(
         )
 
         # conversation may end from the tutor side.
-        if hasattr(tutor_reply, "metadata") and tutor_reply.metadata.get(
+        if isinstance(tutor_reply, TutorResponse) and tutor_reply.metadata.get(
             "should_conversation_end",
             False,
         ):
@@ -212,9 +208,7 @@ def run_base_learner_conversation(
                 turn_number=turn_idx + 1,
                 learner_response=learner_response,
                 tutor_response=(
-                    tutor_reply
-                    if isinstance(tutor_reply, str)
-                    else (tutor_reply.message if tutor_reply else None)
+                    tutor_reply if isinstance(tutor_reply, str) else (tutor_reply.message if tutor_reply else None)
                 ),
             ),
         )
@@ -225,9 +219,7 @@ def run_base_learner_conversation(
     # --- End ---
     result.final_learner_response = result.turns[-1].learner_response
     result.conversation_ended_reason = (
-        "max_turns"
-        if len(result.turns) >= max_turns
-        else (result.conversation_ended_reason or "tutor_no_reply")
+        "max_turns" if len(result.turns) >= max_turns else (result.conversation_ended_reason or "tutor_no_reply")
     )
 
     logger.info(
@@ -247,7 +239,7 @@ def run_base_learner_conversation(
         verdict = did_learner_find_solution_in_turns(
             problem_text=problem_text,
             learner_turns=learner_turns,
-            correct_answer=correct_answer,
+            correct_answer=correct_answer or "",
             model=classification_model,
             computed_conversation_ended_reason=result.conversation_ended_reason,
         )

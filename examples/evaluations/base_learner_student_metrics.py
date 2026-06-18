@@ -22,9 +22,9 @@ load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from base_learner.binary_skill_learner import BinarySkillLearner
+from base_learner.binary_skill_learner import BinarySkillLearner  # noqa: E402
 
-from evalconvolearn import EvalConvoLearn, EvaluationConfig, LearnerEvalConfig
+from evalconvolearn import EvalConvoLearn, EvaluationConfig, LearnerEvalConfig  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,
@@ -76,8 +76,7 @@ def main() -> None:
         benchmarks_custom_args={
             "DatasetFittedConversationalBenchmark": {
                 "conversations_jsonl_path": _CONVERSATIONS_JSONL,
-                "conversation_metrics_cache_path": eval_dir
-                / "conversation_metrics_cache.json",
+                "conversation_metrics_cache_path": eval_dir / "conversation_metrics_cache.json",
                 "max_records_per_skill_mastery": 8,
                 "max_conversation_turns": 7,
                 "num_example_conversations_for_tutor_response_generation": few_shot_count,

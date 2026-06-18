@@ -21,8 +21,6 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from evalconvolearn.utils.llm_evaluator import evaluate_response_correctness
-
 from ..models.practice_item import PracticeItemPool
 from ..models.skill import Skill, SkillSpace
 from .base_tutor import BaseTutor
@@ -65,7 +63,7 @@ class BaseLearner(ABC, BaseModel):
 
     model_config = {"arbitrary_types_allowed": True}
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         """Initialize Base Learner."""
         super().__init__(**data)
 
@@ -290,9 +288,7 @@ class BaseLearner(ABC, BaseModel):
             )
 
         problems_seen = self.get_problems_seen()
-        aligned_items_unseen = [
-            item for item in aligned_items if item.text not in problems_seen
-        ]
+        aligned_items_unseen = [item for item in aligned_items if item.text not in problems_seen]
         if not aligned_items_unseen:
             if reuse_seen_problems:
                 logger.warning(
@@ -329,20 +325,18 @@ class BaseLearner(ABC, BaseModel):
                     "practice_item_text": item.text,
                     "item_skills": [skill_id],
                     "dialogue_history": (
-                        [{"role": "user", "content": response}]
-                        if isinstance(response, str)
-                        else response
+                        [{"role": "user", "content": response}] if isinstance(response, str) else response
                     ),
                 },
             )
+            from evalconvolearn.utils.llm_evaluator import evaluate_response_correctness
+
             correctness = evaluate_response_correctness(
                 problem_text=item.text,
                 learner_response=(
                     response
                     if isinstance(response, str)
-                    else [
-                        resp["content"] for resp in response if resp["role"] == "user"
-                    ]
+                    else [resp["content"] for resp in response if resp["role"] == "user"]
                 ),
                 correct_answer=item.answer,
             )
@@ -488,6 +482,8 @@ class BaseLearner(ABC, BaseModel):
                     max_turns,
                     last_response[:300],
                 )
+                from evalconvolearn.utils.llm_evaluator import evaluate_response_correctness
+
                 correctness = evaluate_response_correctness(
                     problem_text=problem_text,
                     learner_response=last_response,
@@ -518,7 +514,7 @@ class BaseLearner(ABC, BaseModel):
     def start_or_continue_conversation(
         self,
         conversation_history: list[dict],
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """Produce the learner's next reply and optionally signal conversation end.
 
@@ -575,7 +571,7 @@ class BaseLearner(ABC, BaseModel):
     def end_conversation(
         self,
         conversation_history: list[dict],
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Finalize the session and update the learner's internal knowledge state.
 
@@ -622,7 +618,7 @@ class BaseLearner(ABC, BaseModel):
     #  Learner upskilling from sequence of skill-aligned conversations
     # ------------------------------------------------------------------ #
 
-    def set_up_initialization_tutor(self, **kwargs) -> None:
+    def set_up_initialization_tutor(self, **kwargs: Any) -> "BaseTutor | None":
         """Override to set ``self._default_skill_initialization_tutor`` before evaluation."""
 
     def upskill_learner_to_skills(
@@ -633,7 +629,7 @@ class BaseLearner(ABC, BaseModel):
         max_conversations_per_skill: int = 3,
         reuse_seen_problems: bool = True,
         max_assessment_turns: int = 1,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Run tutor conversations to upskill the learner to master *target_skill_ids*.
 
@@ -649,9 +645,7 @@ class BaseLearner(ABC, BaseModel):
         Tutor: should be designed as helpful in the specific learning context.
         Practice items: should have good coverage of the target skill and prerequisite skills to run multiple conversations if needed.
         """
-        topologically_sorted_subgraphs = (
-            self.skill_space.get_all_subgraphs_of_skill_prerequisites(target_skill_ids)
-        )
+        topologically_sorted_subgraphs = self.skill_space.get_all_subgraphs_of_skill_prerequisites(target_skill_ids)
         logger.info(
             "[upskill_learner_to_skills] learner=%s target_skills=%s → %d subgraph(s) found",
             self.id,
@@ -671,10 +665,8 @@ class BaseLearner(ABC, BaseModel):
             )
 
             conversations_run = 0
-            while (
-                conversations_run < max_conversations_per_skill
-                and topologically_sorted_unknown_skills
-            ):
+            skill_id = ""
+            while conversations_run < max_conversations_per_skill and topologically_sorted_unknown_skills:
                 logger.info(
                     "[upskill_learner_to_skills] learner=%s upskill conversation pass %d/%d — checking mastery for: %s",
                     self.id,
@@ -734,9 +726,7 @@ class BaseLearner(ABC, BaseModel):
                         )
                     problems_seen = self.get_problems_seen()
 
-                    aligned_items_unseen = [
-                        item for item in aligned_items if item.text not in problems_seen
-                    ]
+                    aligned_items_unseen = [item for item in aligned_items if item.text not in problems_seen]
                     if not aligned_items_unseen:
                         if reuse_seen_problems:
                             logger.warning(
@@ -842,10 +832,7 @@ class BaseLearner(ABC, BaseModel):
                 sorted(known_skills),
                 topologically_sorted_unknown_skills,
             )
-            if (
-                conversations_run >= max_conversations_per_skill
-                and topologically_sorted_unknown_skills
-            ):
+            if conversations_run >= max_conversations_per_skill and topologically_sorted_unknown_skills:
                 raise LearnerInitializationError(
                     f"Failed to upskill learner to master skill {skill_id} after "
                     f"{max_conversations_per_skill} conversations. "

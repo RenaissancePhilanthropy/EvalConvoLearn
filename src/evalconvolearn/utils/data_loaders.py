@@ -2,6 +2,7 @@
 
 import csv
 from pathlib import Path
+from typing import Sequence
 
 
 def get_data_dir() -> Path:
@@ -34,9 +35,7 @@ def load_tagged_skill_ids() -> set[str]:
         set of skill IDs found in the tagged items file
 
     """
-    tagged_items_path = (
-        get_florida_doe_data_dir() / "tagged-practice-items-with-responses.csv"
-    )
+    tagged_items_path = get_florida_doe_data_dir() / "tagged-practice-items-with-responses.csv"
 
     skill_ids = set()
     with tagged_items_path.open(newline="", encoding="utf-8") as csvfile:
@@ -123,7 +122,7 @@ def get_benchmark_output_dir() -> Path:
 
 
 def render_conversation_messages(
-    messages: list[dict | object],
+    messages: Sequence[dict | object],
     roles_names: dict[str, str] | None = None,
 ) -> str:
     """Render conversation messages as a formatted string for LLM prompts.

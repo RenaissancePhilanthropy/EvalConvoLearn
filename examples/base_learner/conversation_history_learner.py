@@ -66,9 +66,7 @@ class ConversationHistoryLearner(BaseLearner):
         if not self.knowledge_cache_dir:
             return None
         cache_key = self._skill_set_cache_key(mastered_skill_ids)
-        return (
-            Path(self.knowledge_cache_dir) / f"{type(self).__name__}_{cache_key}.json"
-        )
+        return Path(self.knowledge_cache_dir) / f"{type(self).__name__}_{cache_key}.json"
 
     def export_knowledge_state(self) -> dict[str, Any]:
         return {"knowledge_items": list(self.knowledge_items)}
@@ -157,11 +155,7 @@ class ConversationHistoryLearner(BaseLearner):
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Respond to the tutor using conversation history and current knowledge."""
-        knowledge_str = (
-            "\n".join(self.knowledge_items)
-            if self.knowledge_items
-            else "No prior knowledge."
-        )
+        knowledge_str = "\n".join(self.knowledge_items) if self.knowledge_items else "No prior knowledge."
 
         def _extract_content(content: Any) -> str:
             if isinstance(content, str):
@@ -262,7 +256,7 @@ class ConversationHistoryLearner(BaseLearner):
             self._client = make_client(self.model)
         return self._client
 
-    def set_up_initialization_tutor(self, **kwargs) -> None:
+    def set_up_initialization_tutor(self, **kwargs: Any) -> None:
         self._default_skill_initialization_tutor = Tutor(
             id="initialization_tutor",
             tutor_type="llm",

@@ -38,7 +38,7 @@ class BaseLineLearningFromConversationBenchmark:
         output_dir: Path | None = None,
         benchmark_extra_args: dict | None = None,
         practice_conversations_file: Path | str | None = None,
-    ):
+    ) -> None:
         self.skill_space = skill_space
         self.practice_item_pool = practice_item_pool
         self.learner_config = learner_config
@@ -56,14 +56,9 @@ class BaseLineLearningFromConversationBenchmark:
             if hasattr(self, key):
                 setattr(self, key, value)
 
-        if (
-            not self.tutor_responses
-            and "mocked_tutor_responses_csv_path" in self.benchmark_extra_args
-        ):
+        if not self.tutor_responses and "mocked_tutor_responses_csv_path" in self.benchmark_extra_args:
             self.tutor_responses = load_tutor_responses_mapping(
-                mocked_tutor_responses_csv_path=self.benchmark_extra_args[
-                    "mocked_tutor_responses_csv_path"
-                ],
+                mocked_tutor_responses_csv_path=self.benchmark_extra_args["mocked_tutor_responses_csv_path"],
             )
 
     def run_all_evaluations(self) -> Path:
@@ -134,11 +129,7 @@ class BaseLineLearningFromConversationBenchmark:
                             continue
 
                         target_skill_id = next(
-                            (
-                                skill_id
-                                for skill_id in item.associated_skills
-                                if skill_id not in mastered_set
-                            ),
+                            (skill_id for skill_id in item.associated_skills if skill_id not in mastered_set),
                             None,
                         )
                         if target_skill_id is None:
@@ -250,10 +241,7 @@ class BaseLineLearningFromConversationBenchmark:
             }
 
         overall = pct_met(df)
-        by_response_type = {
-            response_type: pct_met(group)
-            for response_type, group in df.groupby("response_type")
-        }
+        by_response_type = {response_type: pct_met(group) for response_type, group in df.groupby("response_type")}
         by_level = {level: pct_met(group) for level, group in df.groupby("level")}
 
         by_level_and_response_type: dict[str, dict[str, dict]] = {}
@@ -292,9 +280,7 @@ class BaseLineLearningFromConversationBenchmark:
                 ).append(
                     bool(record.get("expectation_met", False)),
                 )
-            all_values = [
-                bool(record.get("expectation_met", False)) for record in records
-            ]
+            all_values = [bool(record.get("expectation_met", False)) for record in records]
             breakdowns = {
                 key: {
                     "avg_alignment": sum(values) / len(values) if values else 0.0,
@@ -304,9 +290,7 @@ class BaseLineLearningFromConversationBenchmark:
             }
             return {
                 "metric_type": "alignment",
-                "overall_avg_alignment": (
-                    sum(all_values) / len(all_values) if all_values else 0.0
-                ),
+                "overall_avg_alignment": (sum(all_values) / len(all_values) if all_values else 0.0),
                 "total_items": len(all_values),
                 "breakdowns": {"by_response_type": breakdowns},
                 "breakdown_keys": ["response_type"],
@@ -325,9 +309,7 @@ class BaseLineLearningFromConversationBenchmark:
         overall_pct = overall.get("expectation_met_pct")
         return {
             "metric_type": "alignment",
-            "overall_avg_alignment": (
-                (overall_pct / 100.0) if overall_pct is not None else 0.0
-            ),
+            "overall_avg_alignment": ((overall_pct / 100.0) if overall_pct is not None else 0.0),
             "total_items": overall.get("total", 0),
             "breakdowns": {"by_response_type": breakdowns},
             "breakdown_keys": ["response_type"],

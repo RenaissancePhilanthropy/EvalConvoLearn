@@ -171,8 +171,7 @@ def generate_learning_sequence_summary(
         "# Learning Sequence Summary",
         "",
         f"Source: `{jsonl_path}`  ",
-        f"Learners: **{len(learner_groups)}** | "
-        f"Total conversations: **{len(records)}**",
+        f"Learners: **{len(learner_groups)}** | Total conversations: **{len(records)}**",
         "",
         "---",
         "",
@@ -190,8 +189,7 @@ def generate_learning_sequence_summary(
 
         if initial_skills:
             lines.append(
-                f"**Initial skills ({len(initial_skills)}):** "
-                + ", ".join(f"`{s}`" for s in initial_skills),
+                f"**Initial skills ({len(initial_skills)}):** " + ", ".join(f"`{s}`" for s in initial_skills),
             )
         else:
             lines.append("**Initial skills:** _none_")
@@ -222,16 +220,14 @@ def generate_learning_sequence_summary(
 
             if item_prereqs:
                 lines.append(
-                    "- **Item skill prerequisites:** "
-                    + ", ".join(f"`{s}`" for s in item_prereqs),
+                    "- **Item skill prerequisites:** " + ", ".join(f"`{s}`" for s in item_prereqs),
                 )
             else:
                 lines.append("- **Item skill prerequisites:** _none_")
 
             if newly_learned:
                 lines.append(
-                    "- **Newly learned:** ✅ "
-                    + ", ".join(f"`{s}`" for s in newly_learned),
+                    "- **Newly learned:** ✅ " + ", ".join(f"`{s}`" for s in newly_learned),
                 )
             else:
                 lines.append("- **Newly learned:** —")
@@ -245,8 +241,7 @@ def generate_learning_sequence_summary(
         )
         if final_skills:
             lines.append(
-                f"**Final skills ({len(final_skills)}):** "
-                + ", ".join(f"`{s}`" for s in final_skills),
+                f"**Final skills ({len(final_skills)}):** " + ", ".join(f"`{s}`" for s in final_skills),
             )
         else:
             lines.append("**Final skills:** _none_")
@@ -287,10 +282,7 @@ def _parse_args() -> argparse.Namespace:
         "--pool-dir",
         type=Path,
         metavar="DIR",
-        help=(
-            "Path to a pool directory; the script will look for "
-            "all_conversations.jsonl inside it automatically."
-        ),
+        help=("Path to a pool directory; the script will look for all_conversations.jsonl inside it automatically."),
     )
 
     parser.add_argument(
@@ -299,8 +291,7 @@ def _parse_args() -> argparse.Namespace:
         default=None,
         metavar="FILE",
         help=(
-            "Where to write the .md summary. "
-            "Defaults to learning_sequence_summary.md next to the conversations file."
+            "Where to write the .md summary. Defaults to learning_sequence_summary.md next to the conversations file."
         ),
     )
     return parser.parse_args()

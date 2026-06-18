@@ -37,7 +37,7 @@ class BaseLinePlacementTestBenchmark:
         output_dir: Path | None = None,
         benchmark_extra_args: dict | None = None,
         practice_conversations_file: Path | str | None = None,
-    ):
+    ) -> None:
         self.skill_space = skill_space
         self.practice_item_pool = practice_item_pool
         self.learner_config = learner_config
@@ -225,9 +225,7 @@ class BaseLinePlacementTestBenchmark:
             }
 
         overall = pct_met(df)
-        by_scenario = {
-            scenario: pct_met(group) for scenario, group in df.groupby("scenario")
-        }
+        by_scenario = {scenario: pct_met(group) for scenario, group in df.groupby("scenario")}
         by_level = {level: pct_met(group) for level, group in df.groupby("level")}
 
         by_level_and_scenario: dict[str, dict[str, dict]] = {}
@@ -262,9 +260,7 @@ class BaseLinePlacementTestBenchmark:
         overall_pct = overall.get("expectation_met_pct")
         return {
             "metric_type": "alignment",
-            "overall_avg_alignment": (
-                (overall_pct / 100.0) if overall_pct is not None else 0.0
-            ),
+            "overall_avg_alignment": ((overall_pct / 100.0) if overall_pct is not None else 0.0),
             "total_items": overall.get("total", 0),
             "breakdowns": {"by_scenario": breakdowns},
             "breakdown_keys": ["scenario"],
@@ -286,9 +282,7 @@ class BaseLinePlacementTestBenchmark:
             item_answer=correct_answer,
         )
         response = (
-            response
-            if isinstance(response, str)
-            else [resp["content"] for resp in response if resp["role"] == "user"]
+            response if isinstance(response, str) else [resp["content"] for resp in response if resp["role"] == "user"]
         )
         verdict = evaluate_response_correctness(
             problem_text=item.text,

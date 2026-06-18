@@ -38,7 +38,7 @@ class PlacementTestBenchmark(FlexLearnerBenchmark):
         learner_config: LearnerEvalConfig | None = None,
         skill_levels: dict[str, set[str]] | None = None,
         benchmark_extra_args: dict | None = None,
-    ):
+    ) -> None:
         """Initialize placement test benchmark.
 
         Args:
@@ -131,13 +131,11 @@ class PlacementTestBenchmark(FlexLearnerBenchmark):
                     exp_rates[exp_key].append(rate)
 
         kc_breakdown: dict[str, Any] = {
-            mode: {"avg_alignment": _avg(rates), "n_runs": len(rates)}
-            for mode, rates in mode_rates.items()
+            mode: {"avg_alignment": _avg(rates), "n_runs": len(rates)} for mode, rates in mode_rates.items()
         }
 
         exp_breakdown: dict[str, Any] = {
-            exp_key: {"avg_alignment": _avg(rates), "n_runs": len(rates)}
-            for exp_key, rates in exp_rates.items()
+            exp_key: {"avg_alignment": _avg(rates), "n_runs": len(rates)} for exp_key, rates in exp_rates.items()
         }
 
         cross_breakdown: dict[str, Any] = {
@@ -209,21 +207,13 @@ class PlacementTestBenchmark(FlexLearnerBenchmark):
 
         # Get all unique skills from practice item pool
         placement_test_skill_ids = sorted(
-            {
-                skill_id
-                for item in self.practice_item_pool.items
-                for skill_id in item.associated_skills
-            },
+            {skill_id for item in self.practice_item_pool.items for skill_id in item.associated_skills},
         )
 
         # Administer test for each skill
         results = []
         for skill_id in placement_test_skill_ids:
-            matching_items = [
-                item
-                for item in self.practice_item_pool.items
-                if skill_id in item.associated_skills
-            ]
+            matching_items = [item for item in self.practice_item_pool.items if skill_id in item.associated_skills]
             if not matching_items:
                 raise ValueError(f"No practice items found for skill ID {skill_id}.")
 
@@ -250,11 +240,7 @@ class PlacementTestBenchmark(FlexLearnerBenchmark):
         expected_incorrect_skills = set(matrix.get("incorrect", set()))
 
         for result in placement_test.test_results:
-            skill_id = (
-                result.practice_item.associated_skills[0]
-                if result.practice_item.associated_skills
-                else None
-            )
+            skill_id = result.practice_item.associated_skills[0] if result.practice_item.associated_skills else None
 
             expected_correct, is_aligned = calculate_placement_test_alignment(
                 result,
@@ -292,9 +278,7 @@ class PlacementTestBenchmark(FlexLearnerBenchmark):
                 },
             )
 
-        alignment_accuracy = (
-            alignment_correct / alignment_evaluated if alignment_evaluated else 0.0
-        )
+        alignment_accuracy = alignment_correct / alignment_evaluated if alignment_evaluated else 0.0
 
         self.logger.info(
             "[%s run %d] alignment_accuracy=%.2f, test_score=%.2f",
@@ -311,9 +295,7 @@ class PlacementTestBenchmark(FlexLearnerBenchmark):
             "run_id": run_id,
             "runs_per_level": self.runs_per_level,
             "knowledge_check_mode": (
-                "with_knowledge_check"
-                if check_if_has_knowledge_before_answering
-                else "without_knowledge_check"
+                "with_knowledge_check" if check_if_has_knowledge_before_answering else "without_knowledge_check"
             ),
             "mastered_skills": learner.mastered_skills,
             "summary": summary,
@@ -342,10 +324,7 @@ class PlacementTestBenchmark(FlexLearnerBenchmark):
             Path to output file
 
         """
-        output_file = (
-            self.output_dir
-            / f"placement_test_skill_alignment_{self.runs_per_level}runs.jsonl"
-        )
+        output_file = self.output_dir / f"placement_test_skill_alignment_{self.runs_per_level}runs.jsonl"
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         all_levels = list(self.skill_levels.keys())
