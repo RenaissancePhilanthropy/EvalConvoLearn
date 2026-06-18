@@ -32,19 +32,19 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv()
 
-from base_learner.conversation_history_learner import ConversationHistoryLearner
-from flexlearner.flexlearner_knowledge_graph import (
+from base_learner.conversation_history_learner import ConversationHistoryLearner  # noqa: E402
+from flexlearner.flexlearner_knowledge_graph import (  # noqa: E402
     KnowledgeGraphLearner,
     build_initial_kg_snapshot,
 )
 
-from evalconvolearn import EvalConvoLearn, EvaluationResults
-from evalconvolearn.models.binary_skills_flexlearner import BinarySkillsFlexLearner
-from evalconvolearn.models.evaluation import EvaluationConfig, LearnerEvalConfig
+from evalconvolearn import EvalConvoLearn, EvaluationResults  # noqa: E402
+from evalconvolearn.models.binary_skills_flexlearner import BinarySkillsFlexLearner  # noqa: E402
+from evalconvolearn.models.evaluation import EvaluationConfig, LearnerEvalConfig  # noqa: E402
 
 logging.basicConfig(
     level=logging.WARNING,
@@ -59,9 +59,7 @@ logger.setLevel(logging.INFO)
 # ---------------------------------------------------------------------------
 DATA_ROOT = PROJECT_ROOT / "data" / "florida-doe"
 MULTI_LEARNER_EVALS_DIR = PROJECT_ROOT / "outputs" / "multi_learner_evals"
-BL_KNOWLEDGE_CACHE_DIR = (
-    PROJECT_ROOT / "outputs" / "base_learner" / "learning_from_conversation"
-)
+BL_KNOWLEDGE_CACHE_DIR = PROJECT_ROOT / "outputs" / "base_learner" / "learning_from_conversation"
 
 RUNS_PER_SCENARIO = 2
 MAX_ITEMS = 3

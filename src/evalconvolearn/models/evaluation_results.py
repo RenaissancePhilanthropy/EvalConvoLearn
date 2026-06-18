@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .evaluation import BenchmarkName
+from .evaluation import BenchmarkName, EvaluationConfig
 
 # ---------------------------------------------------------------------------
 # Structured-metrics merge helpers
@@ -54,24 +54,15 @@ def _merge_multi_conv_metrics(metrics_list: list[dict]) -> dict:
     avg_turns_vals = [
         m["overall_avg_turns_per_skill"]
         for m in metrics_list
-        if m.get("overall_avg_turns_per_skill") is not None
-        and m["overall_avg_turns_per_skill"] != float("inf")
+        if m.get("overall_avg_turns_per_skill") is not None and m["overall_avg_turns_per_skill"] != float("inf")
     ]
-    consol_vals = [
-        m.get("overall_consolidation_solution_rate", 0.0) for m in metrics_list
-    ]
+    consol_vals = [m.get("overall_consolidation_solution_rate", 0.0) for m in metrics_list]
     total_targets = sum(m.get("total_targets", 0) for m in metrics_list)
     total_mastered = sum(m.get("targets_mastered", 0) for m in metrics_list)
     return {
         "metric_type": "multi_conv_practice",
-        "avg_turns_per_skill": (
-            sum(avg_turns_vals) / len(avg_turns_vals)
-            if avg_turns_vals
-            else float("inf")
-        ),
-        "avg_consolidation_solution_rate": (
-            sum(consol_vals) / len(consol_vals) if consol_vals else 0.0
-        ),
+        "avg_turns_per_skill": (sum(avg_turns_vals) / len(avg_turns_vals) if avg_turns_vals else float("inf")),
+        "avg_consolidation_solution_rate": (sum(consol_vals) / len(consol_vals) if consol_vals else 0.0),
         "total_targets": total_targets,
         "total_targets_mastered": total_mastered,
         "avg_alignment_rate": total_mastered / total_targets if total_targets else None,
@@ -262,8 +253,7 @@ class EvalSetResults:
                 align_val = entry.get("avg_alignment_rate")
                 align_str = f"{align_val:.1%}" if align_val is not None else "N/A"
                 print(
-                    f"  {label:<45} | pass {entry['n_passed']}/{entry['n_runs']} | "
-                    f"alignment {align_str}",
+                    f"  {label:<45} | pass {entry['n_passed']}/{entry['n_runs']} | alignment {align_str}",
                 )
                 for bd_name, bd_vals in (entry.get("breakdowns") or {}).items():
                     if isinstance(bd_vals, dict):
@@ -313,7 +303,7 @@ class EvalSetResults:
 
 def build_evalset_results(
     results: list[EvaluationResults],
-    eval_configs=None,
+    eval_configs: list[EvaluationConfig] | None = None,
     evalset_label: str | None = None,
     output_dir: Path | str | None = None,
 ) -> EvalSetResults:
@@ -361,11 +351,7 @@ def build_evalset_results(
         for lt, summaries in lt_map.items():
             n_total = len(summaries)
             n_passed = sum(1 for s in summaries if s.passed)
-            sm_list = [
-                s.output["structured_metrics"]
-                for s in summaries
-                if s.output.get("structured_metrics")
-            ]
+            sm_list = [s.output["structured_metrics"] for s in summaries if s.output.get("structured_metrics")]
             merged = _merge_structured_metrics(sm_list) if sm_list else {}
             result_paths = [
                 str(s.output.get("output_dir", s.output.get("output_file", "")))

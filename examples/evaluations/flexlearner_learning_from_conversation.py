@@ -23,15 +23,15 @@ load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from flexlearner.flexlearner_conversation_history import ConversationHistoryLearner
-from flexlearner.flexlearner_knowledge_graph import (
+from flexlearner.flexlearner_conversation_history import ConversationHistoryLearner  # noqa: E402
+from flexlearner.flexlearner_knowledge_graph import (  # noqa: E402
     KnowledgeGraphLearner,
     build_initial_kg_snapshot,
 )
 
-from evalconvolearn import BinarySkillsFlexLearner, EvalConvoLearn
-from evalconvolearn.models.evaluation import EvaluationConfig, LearnerEvalConfig
-from evalconvolearn.utils.benchmark_results import print_lfc_results
+from evalconvolearn import BinarySkillsFlexLearner, EvalConvoLearn  # noqa: E402
+from evalconvolearn.models.evaluation import EvaluationConfig, LearnerEvalConfig  # noqa: E402
+from evalconvolearn.utils.benchmark_results import print_lfc_results  # noqa: E402
 
 _KG_SEED_TRIPLETS: list[dict] = [
     {

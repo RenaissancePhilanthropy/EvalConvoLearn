@@ -39,8 +39,7 @@ def _validate_benchmark_list(names: list[str]) -> list[BenchmarkName]:
     unknown = [n for n in names if n not in valid]
     if unknown:
         raise ValueError(
-            f"Unknown benchmark(s): {unknown}. "
-            f"Available benchmarks: {ALL_BENCHMARKS}.",
+            f"Unknown benchmark(s): {unknown}. Available benchmarks: {ALL_BENCHMARKS}.",
         )
     return names  # type: ignore[return-value]
 
@@ -94,10 +93,7 @@ class LearnerEvalConfig(BaseModel):
 
     learner_class: type[BaseLearner] = Field(
         ...,
-        description=(
-            "Concrete BaseLearner subclass to instantiate for this evaluation. "
-            "Must not be abstract."
-        ),
+        description=("Concrete BaseLearner subclass to instantiate for this evaluation. Must not be abstract."),
     )
     label: str = Field(
         description=(
@@ -214,8 +210,7 @@ class EvaluationConfig(BaseModel):
         ...,
         min_length=1,
         description=(
-            "One or more learner configurations to evaluate. "
-            "Each entry describes a distinct learner archetype."
+            "One or more learner configurations to evaluate. Each entry describes a distinct learner archetype."
         ),
     )
     output_dir: Path | None = Field(
@@ -253,10 +248,7 @@ class EvaluationConfig(BaseModel):
     )
     label: str | None = Field(
         default=None,
-        description=(
-            "Optional human-readable label for the overall evaluation run, "
-            "used in logs and summary reports."
-        ),
+        description=("Optional human-readable label for the overall evaluation run, used in logs and summary reports."),
     )
     num_threads: int = Field(
         default=4,
@@ -284,22 +276,19 @@ class EvaluationConfig(BaseModel):
             for label, benchmarks in v.items():
                 if not isinstance(label, str):
                     raise ValueError(
-                        f"Keys in the benchmarks dict must be strings (learner config labels); "
-                        f"got {label!r}.",
+                        f"Keys in the benchmarks dict must be strings (learner config labels); got {label!r}.",
                     )
                 result = _normalize_benchmark_value(benchmarks)
                 if result is None:
                     raise ValueError(
-                        f"Dict value for label {label!r} must be a list of benchmark names "
-                        f"or 'all', not None.",
+                        f"Dict value for label {label!r} must be a list of benchmark names or 'all', not None.",
                     )
                 validated[label] = result
             return validated
         if isinstance(v, list):
             return _validate_benchmark_list(v)
         raise ValueError(
-            f"benchmarks must be a list, 'all', None, or a dict mapping labels to "
-            f"benchmark lists; got {v!r}.",
+            f"benchmarks must be a list, 'all', None, or a dict mapping labels to benchmark lists; got {v!r}.",
         )
 
     @model_validator(mode="after")
@@ -319,8 +308,7 @@ class EvaluationConfig(BaseModel):
         duplicates = {label for label in labels if label in seen or seen.add(label)}  # type: ignore[func-returns-value]
         if duplicates:
             raise ValueError(
-                f"All learner_configs must have distinct labels, "
-                f"but found duplicate label(s): {sorted(duplicates)}.",
+                f"All learner_configs must have distinct labels, but found duplicate label(s): {sorted(duplicates)}.",
             )
 
         known_labels: set[str] = set(labels)
@@ -385,11 +373,7 @@ class EvaluationConfig(BaseModel):
 
         # 2. Dict-based per-label override in EvaluationConfig
         if isinstance(self.benchmarks, dict):
-            entry = (
-                self.benchmarks.get(learner_config.label)
-                if learner_config.label is not None
-                else None
-            )
+            entry = self.benchmarks.get(learner_config.label) if learner_config.label is not None else None
             if entry is not None:
                 if entry == "all":
                     return list(ALL_BENCHMARKS)
@@ -412,6 +396,5 @@ class EvaluationConfig(BaseModel):
         # TODO - when resolving benchmarks, verify that if learner_level is used, then the corresponding skill_levels are provided in the config for the relevant benchmarks (e.g. PlacementTestBenchmark)
 
         return {
-            cfg.label or cfg.learner_class.__name__: self._resolve_benchmarks_for(cfg)
-            for cfg in self.learner_configs
+            cfg.label or cfg.learner_class.__name__: self._resolve_benchmarks_for(cfg) for cfg in self.learner_configs
         }

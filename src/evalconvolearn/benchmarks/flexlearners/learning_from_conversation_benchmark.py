@@ -38,7 +38,7 @@ class LearningFromConversationBenchmark(FlexLearnerBenchmark):
         skill_levels: dict[str, set[str]] | None = None,
         benchmark_extra_args: dict | None = None,
         max_items: int = 10,
-    ):
+    ) -> None:
         """Initialize learning from conversation benchmark.
 
         Args:
@@ -97,12 +97,8 @@ class LearningFromConversationBenchmark(FlexLearnerBenchmark):
         # must always be active (True only).  For custom SimulatedLearner
         # subclasses the caller may request both passes to compare outcomes.
         # Falls back to [(True, "with_skill_check")] when not specified.
-        learner_class = (
-            self.learner_config.learner_class if self.learner_config else None
-        )
-        _is_skill_learner = (
-            learner_class is not None and learner_class is BinarySkillsFlexLearner
-        )
+        learner_class = self.learner_config.learner_class if self.learner_config else None
+        _is_skill_learner = learner_class is not None and learner_class is BinarySkillsFlexLearner
         _default_modes: list[tuple[bool, str]] = (
             [(True, "with_skill_check")]
             if _is_skill_learner
@@ -167,15 +163,11 @@ class LearningFromConversationBenchmark(FlexLearnerBenchmark):
             "breakdowns": {
                 "by_check_mode": {k: _avg(v) for k, v in by_check_mode.items()},
                 "by_response_type": {k: _avg(v) for k, v in by_response_type.items()},
-                "by_check_mode_x_response_type_x_eval_mode": {
-                    k: _avg(v) for k, v in by_combo.items()
-                },
+                "by_check_mode_x_response_type_x_eval_mode": {k: _avg(v) for k, v in by_combo.items()},
             },
         }
         all_vals = [r.get("alignment_accuracy", 0.0) for r in records]
-        metrics["overall_avg_alignment"] = (
-            sum(all_vals) / len(all_vals) if all_vals else 0.0
-        )
+        metrics["overall_avg_alignment"] = sum(all_vals) / len(all_vals) if all_vals else 0.0
         metrics["total_items"] = len(all_vals)
         metrics["metric_type"] = "alignment"
         metrics["breakdown_keys"] = ["check_mode", "response_type", "evaluation_mode"]
@@ -245,11 +237,7 @@ class LearningFromConversationBenchmark(FlexLearnerBenchmark):
         total_alignment_accuracy = 0
         total_items_evaluated = 0
 
-        items = (
-            items_to_evaluate
-            if items_to_evaluate is not None
-            else self.practice_item_pool.items
-        )
+        items = items_to_evaluate if items_to_evaluate is not None else self.practice_item_pool.items
 
         # Test each practice item
         for idx, practice_item in enumerate(items, start=1):
@@ -289,10 +277,7 @@ class LearningFromConversationBenchmark(FlexLearnerBenchmark):
                 )
             else:
                 # Create temporary practice file for this learner
-                practice_file = (
-                    tmp_dir
-                    / f"{learner_level}_{response_type}_item_{idx}_run_{run_id}.jsonl"
-                )
+                practice_file = tmp_dir / f"{learner_level}_{response_type}_item_{idx}_run_{run_id}.jsonl"
                 practice_file.touch()
 
                 # Create learner with appropriate skill level
@@ -336,10 +321,7 @@ class LearningFromConversationBenchmark(FlexLearnerBenchmark):
 
             # Build mock conversation
             learner_response_key = f"learner_response_{response_type}"
-            learner_follow_up = (
-                tutor_data.get(learner_response_key, "").strip()
-                or "Thank you for the explanation!"
-            )
+            learner_follow_up = tutor_data.get(learner_response_key, "").strip() or "Thank you for the explanation!"
 
             # mock conversation has adapted learner responses:
             mock_conversation = [
@@ -362,11 +344,7 @@ class LearningFromConversationBenchmark(FlexLearnerBenchmark):
             ]
 
             try:
-                item_skills_objs = [
-                    self.skill_space[sk_id]
-                    for sk_id in item_skills
-                    if sk_id in self.skill_space
-                ]
+                item_skills_objs = [self.skill_space[sk_id] for sk_id in item_skills if sk_id in self.skill_space]
 
                 learned_skills = learner.learns_from_conversation(
                     dialogue_history=mock_conversation,
@@ -375,9 +353,7 @@ class LearningFromConversationBenchmark(FlexLearnerBenchmark):
                     check_if_should_learn=check_if_should_learn,
                 )
 
-                learned_skills_ids = (
-                    [sk.id for sk in learned_skills] if learned_skills else []
-                )
+                learned_skills_ids = [sk.id for sk in learned_skills] if learned_skills else []
 
             except Exception as e:
                 self.logger.error("Error processing item %d: %s", idx, e)
@@ -400,6 +376,10 @@ class LearningFromConversationBenchmark(FlexLearnerBenchmark):
             # ----------------------------------------------------------
             # Alignment accuracy
             # ----------------------------------------------------------
+            pre_test_aligned: bool = False
+            actually_learned: bool = False
+            expected_learned: bool = False
+            learning_aligned: bool = False
             if self.evaluate_learning_with_pre_post_tests:
                 # Pre/post-test mode:
                 # 1. pre_test must align with the learner's initial mastered
@@ -417,29 +397,21 @@ class LearningFromConversationBenchmark(FlexLearnerBenchmark):
                 from evalconvolearn.models.placement_test import PlacementTest
 
                 _pt = PlacementTest(practice_item_pool=self.practice_item_pool)
-                required_skill_ids = {
-                    s.id for s in _pt._get_all_required_skills_for_item(practice_item)
-                }
+                required_skill_ids = {s.id for s in _pt._get_all_required_skills_for_item(practice_item)}
                 expected_pre_test = required_skill_ids.issubset(set(mastered_skills))
 
                 pre_test_aligned = (
-                    (pre_test_can_answer == expected_pre_test)
-                    if pre_test_can_answer is not None
-                    else False
+                    (pre_test_can_answer == expected_pre_test) if pre_test_can_answer is not None else False
                 )
 
                 # Infer actual learning from pre/post tests
-                actually_learned = (
-                    post_test_can_answer is True and pre_test_can_answer is False
-                )
+                actually_learned = post_test_can_answer is True and pre_test_can_answer is False
                 # Expected learning: should have learned something?
                 expected_learned = len(expected_learning) > 0
 
                 learning_aligned = actually_learned == expected_learned
 
-                item_alignment_accuracy = (
-                    1.0 if (pre_test_aligned and learning_aligned) else 0.0
-                )
+                item_alignment_accuracy = 1.0 if (pre_test_aligned and learning_aligned) else 0.0
 
                 self.logger.debug(
                     "[Pre/Post] item %d — pre=%s post=%s pre_aligned=%s actually_learned=%s expected_learned=%s alignment=%.1f",
@@ -475,9 +447,7 @@ class LearningFromConversationBenchmark(FlexLearnerBenchmark):
                 "learned_skills": learned_skills_ids,
                 "alignment_accuracy": item_alignment_accuracy,
                 "evaluation_mode": (
-                    "pre_post_test"
-                    if self.evaluate_learning_with_pre_post_tests
-                    else "skill_alignment"
+                    "pre_post_test" if self.evaluate_learning_with_pre_post_tests else "skill_alignment"
                 ),
                 "timestamp": datetime.now().isoformat(),
             }
@@ -491,11 +461,7 @@ class LearningFromConversationBenchmark(FlexLearnerBenchmark):
                 result["learning_aligned"] = learning_aligned
             results.append(result)
 
-        avg_alignment = (
-            total_alignment_accuracy / total_items_evaluated
-            if total_items_evaluated > 0
-            else 0.0
-        )
+        avg_alignment = total_alignment_accuracy / total_items_evaluated if total_items_evaluated > 0 else 0.0
         self.logger.info(
             "[%s / %s] items=%d avg_alignment=%.2f",
             learner_level,
@@ -513,21 +479,13 @@ class LearningFromConversationBenchmark(FlexLearnerBenchmark):
             Path to output file
 
         """
-        output_file = (
-            self.output_dir
-            / f"learning_from_conversation_{self.runs_per_level}runs.jsonl"
-        )
+        output_file = self.output_dir / f"learning_from_conversation_{self.runs_per_level}runs.jsonl"
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         all_levels = list(self.skill_levels.keys())
         response_types = ["helpful", "unhelpful"]
         check_modes = self.check_if_should_learn_modes  # list of (bool, label)
-        total_runs = (
-            len(all_levels)
-            * len(response_types)
-            * len(check_modes)
-            * self.runs_per_level
-        )
+        total_runs = len(all_levels) * len(response_types) * len(check_modes) * self.runs_per_level
         print(
             f"[LearningFromConversationBenchmark] Starting"
             f" -- {len(all_levels)} level(s) x {len(response_types)} response type(s)"
@@ -568,10 +526,7 @@ class LearningFromConversationBenchmark(FlexLearnerBenchmark):
                             # Cannot have self.evaluate_learning_with_pre_post_tests=False and check_if_should_learn=False
                             # because for a FlexLearner with custom knowledge, check if should learn will not
                             # update the list of mastered_skills, which is used to evaluate learning when pre/post test is deactivated.
-                            if (
-                                not self.evaluate_learning_with_pre_post_tests
-                                and not check_flag
-                            ):
+                            if not self.evaluate_learning_with_pre_post_tests and not check_flag:
                                 continue
 
                             for run_id in range(self.runs_per_level):

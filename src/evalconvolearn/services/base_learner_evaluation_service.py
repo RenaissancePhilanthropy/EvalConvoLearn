@@ -70,7 +70,7 @@ class BaseLearnerEvaluationService:
         practice_item_pool: PracticeItemPool,
         sdk_config: EvalConvoLearnConfig | None = None,
         skill_misconceptions: dict[str, str] | None = None,
-    ):
+    ) -> None:
         self.eval_config = eval_config
         self.skill_space = skill_space
         self.practice_item_pool = practice_item_pool
@@ -101,9 +101,7 @@ class BaseLearnerEvaluationService:
         if self.eval_config.benchmarks == "all" or self.eval_config.benchmarks is None:
             requested = list(benchmark_classes.keys())
         else:
-            requested = [
-                b for b in self.eval_config.benchmarks if b in benchmark_classes
-            ]
+            requested = [b for b in self.eval_config.benchmarks if b in benchmark_classes]
 
         results: dict[str, Any] = {
             "run_id": run_id,
@@ -164,8 +162,7 @@ class BaseLearnerEvaluationService:
                     "skill_levels": skill_levels,
                     "output_dir": output_dir,
                     "benchmark_extra_args": benchmark_extra_args,
-                    "practice_conversations_file": output_dir
-                    / f"{lconfig.label}_conversations.jsonl",
+                    "practice_conversations_file": output_dir / f"{lconfig.label}_conversations.jsonl",
                 }
 
                 try:
@@ -176,9 +173,7 @@ class BaseLearnerEvaluationService:
                     structured_metrics = None
                     if hasattr(BenchmarkCls, "compute_structured_metrics"):
                         try:
-                            structured_metrics = (
-                                BenchmarkCls.compute_structured_metrics(output_file)
-                            )
+                            structured_metrics = BenchmarkCls.compute_structured_metrics(output_file)
                         except Exception as exc:
                             logger.debug(
                                 "Could not compute structured metrics: %s",

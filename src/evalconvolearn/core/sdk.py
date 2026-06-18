@@ -70,7 +70,7 @@ class EvalConvoLearn:
 
     """
 
-    def __init__(self, config: EvalConvoLearnConfig | None = None):
+    def __init__(self, config: EvalConvoLearnConfig | None = None) -> None:
         """Initialize EvalConvoLearn SDK."""
         self.config = config or EvalConvoLearnConfig()
         self._conversation_service = ConversationService(self.config)
@@ -104,8 +104,7 @@ class EvalConvoLearn:
         path = json_path or self.config.tagged_practice_items_with_responses_csv
         if path is None:
             raise ValueError(
-                "json_path must be provided or "
-                "TAGGED_PRACTICE_ITEMS_WITH_RESPONSES_CSV env var must be set.",
+                "json_path must be provided or TAGGED_PRACTICE_ITEMS_WITH_RESPONSES_CSV env var must be set.",
             )
         pool = PracticeItemPool(items=[], skill_space=skill_space)
         pool.load_items_from_csv(str(path))
@@ -157,9 +156,7 @@ class EvalConvoLearn:
             skill_space: The skill space to use
 
         """
-        pool_path = (
-            Path(pool_directory) if isinstance(pool_directory, str) else pool_directory
-        )
+        pool_path = Path(pool_directory) if isinstance(pool_directory, str) else pool_directory
 
         if pool_path.is_absolute() or pool_path.exists():
             pass  # Use pool_path as-is
@@ -279,8 +276,7 @@ class EvalConvoLearn:
 
         """
         if any(
-            issubclass(lc.learner_class, BaseLearner)
-            and not issubclass(lc.learner_class, BinarySkillsFlexLearner)
+            issubclass(lc.learner_class, BaseLearner) and not issubclass(lc.learner_class, BinarySkillsFlexLearner)
             for lc in eval_config.learner_configs
         ):
             return self.run_base_learner_evaluation(

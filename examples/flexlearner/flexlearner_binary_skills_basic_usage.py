@@ -16,7 +16,7 @@ class MyCustomTutor(BaseTutor):
         return "Good thinking! Can you explain your reasoning?"
 
 
-def main():
+def main() -> None:
     sdk = EvalConvoLearn()
 
     skill_space = sdk.load_skill_space(Path("data") / "florida-doe" / "skill-space.csv")

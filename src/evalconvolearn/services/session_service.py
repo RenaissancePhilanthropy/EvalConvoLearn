@@ -1,7 +1,9 @@
 """Session management service."""
 
 import uuid
+from collections.abc import Generator
 from pathlib import Path
+from typing import Any
 
 from ..core.base_learner import BaseLearner
 from ..core.config import EvalConvoLearnConfig
@@ -11,6 +13,7 @@ from ..models.base_learner_conversation import (
     run_base_learner_conversation,
 )
 from ..models.binary_skills_flexlearner import StudentPool
+from ..models.practice_item import PracticeItem
 from ..models.tutor import Tutor
 from ..storage.file_storage import FileSessionStorage, FileStudentPoolStorage
 
@@ -26,7 +29,7 @@ class ConversationSession:
         config: EvalConvoLearnConfig,
         conversation_history: list | None = None,
         session_service: "SessionService | None" = None,
-    ):
+    ) -> None:
         self.session_id = session_id
         self.learner = learner
         self.student_pool = student_pool
@@ -34,7 +37,7 @@ class ConversationSession:
         self._conversation_history = conversation_history or []
         self._session_service = session_service
 
-    def conversation(self, practice_item, tutor):
+    def conversation(self, practice_item: PracticeItem, tutor: Tutor) -> Generator[dict, None, None]:
         """Run a conversation on a practice item with a custom tutor.
 
         Args:
@@ -49,10 +52,8 @@ class ConversationSession:
         """
         from ..models.flexlearner_conversation import ConversationGraph
 
-        pool_directory = self.student_pool.directory_file or (
-            self.config.student_pools_dir / self.student_pool.id
-        )
-        graph_memory_path = pool_directory / self.session_id / "graph_memory.db"
+        pool_directory = self.student_pool.directory_file or (self.config.student_pools_dir / self.student_pool.id)
+        graph_memory_path = Path(pool_directory) / self.session_id / "graph_memory.db"
         graph_memory_path.parent.mkdir(parents=True, exist_ok=True)
 
         conversation = ConversationGraph(
@@ -137,18 +138,18 @@ class ConversationSession:
     def _auto_save(
         self,
         tutor: Tutor | None = None,
-    ):
+    ) -> None:
         """Auto-save session state if session service is available."""
         if self._session_service:
             self._session_service.save_session(self, tutor=tutor)
 
-    def _save_student_pool_practice(self):
+    def _save_student_pool_practice(self) -> None:
         """Save practice history to student pool storage."""
         if self._session_service:
             self._session_service.save_session_pool(self.student_pool)
 
     @property
-    def dialogue_history(self):
+    def dialogue_history(self) -> list:
         """Get the conversation history."""
         return self._conversation_history
 
@@ -168,7 +169,7 @@ class ConversationSession:
         learner: FlexLearner,
         student_pool: StudentPool,
         config: EvalConvoLearnConfig,
-    ):
+    ) -> "ConversationSession":
         """Deserialize session from dictionary."""
         return cls(
             session_id=data["session_id"],
@@ -182,16 +183,14 @@ class ConversationSession:
 class SessionService:
     """Service for managing sessions."""
 
-    def __init__(self, config: EvalConvoLearnConfig):
+    def __init__(self, config: EvalConvoLearnConfig) -> None:
         self.config = config
         self._pool_storage = FileStudentPoolStorage()
         self._session_storage = FileSessionStorage()
 
     def _get_session_storage_path(self, student_pool: StudentPool) -> Path:
-        pool_directory = student_pool.directory_file or (
-            self.config.student_pools_dir / student_pool.id
-        )
-        return pool_directory / "sessions"
+        pool_directory = student_pool.directory_file or (self.config.student_pools_dir / student_pool.id)
+        return Path(pool_directory) / "sessions"
 
     def create_session(
         self,
@@ -230,9 +229,7 @@ class SessionService:
         if tutor:
             session_data = session.to_dict()
             session_data["tutor_details"] = (
-                tutor.tutor_characteristics
-                if hasattr(tutor, "tutor_characteristics")
-                else {}
+                tutor.tutor_characteristics if hasattr(tutor, "tutor_characteristics") else {}
             )
         else:
             session_data = session.to_dict()
@@ -292,7 +289,7 @@ class BaseConversationSession:
         learner: BaseLearner,
         session_id: str | None = None,
         max_turns: int = 6,
-    ):
+    ) -> None:
         self.learner = learner
         self.session_id = session_id or str(uuid.uuid4())
         self.max_turns = max_turns
@@ -301,9 +298,9 @@ class BaseConversationSession:
 
     def start(
         self,
-        practice_item: "PracticeItem | str",
+        practice_item: PracticeItem | str,
         initial_tutor_message: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, str]:
         """Start a conversation with the given problem.
 
@@ -311,19 +308,10 @@ class BaseConversationSession:
         presentation) which is added to the history before the learner's
         first call to ``start_or_continue_conversation``.
         """
-        from ..models.practice_item import PracticeItem
-
-        problem_text = (
-            practice_item.text
-            if isinstance(practice_item, PracticeItem)
-            else practice_item
-        )
+        problem_text = practice_item.text if isinstance(practice_item, PracticeItem) else practice_item
 
         # Build the opening tutor message and seed the history
-        opening = (
-            initial_tutor_message
-            or f"Let's work on the following problem together: {problem_text}"
-        )
+        opening = initial_tutor_message or f"Let's work on the following problem together: {problem_text}"
         self._history.append({"role": "assistant", "content": opening})
 
         result = self.learner.start_or_continue_conversation(
@@ -333,7 +321,7 @@ class BaseConversationSession:
         self._started = True
         return result
 
-    def send_tutor_message(self, tutor_message: str, **kwargs) -> dict[str, str]:
+    def send_tutor_message(self, tutor_message: str, **kwargs: Any) -> dict[str, str]:
         """Send a tutor message and return the learner's reply."""
         if not self._started:
             raise RuntimeError("Call .start() before sending tutor messages.")
@@ -352,8 +340,8 @@ class BaseConversationSession:
 
     def run_full_conversation(
         self,
-        practice_item: "PracticeItem | str",
-        tutor=None,
+        practice_item: PracticeItem | str,
+        tutor: Tutor | None = None,
         tutor_responses: list[str] | None = None,
     ) -> BaseConversationResult:
         """Convenience: run a full multi-turn conversation."""

@@ -13,24 +13,19 @@ from evalconvolearn.models.tutor import Tutor
 
 
 @pytest.fixture()
-def skills_csv_path():
+def skills_csv_path() -> Path:
     """Path to example skills CSV file."""
     return Path(__file__).parent.parent / "data" / "florida-doe" / "skill-space.csv"
 
 
 @pytest.fixture()
-def tagged_items_csv_path():
+def tagged_items_csv_path() -> Path:
     """Path to example tagged items CSV file."""
-    return (
-        Path(__file__).parent.parent
-        / "data"
-        / "florida-doe"
-        / "tagged-practice-items-with-responses.csv"
-    )
+    return Path(__file__).parent.parent / "data" / "florida-doe" / "tagged-practice-items-with-responses.csv"
 
 
 @pytest.fixture()
-def skill_space(skills_csv_path):
+def skill_space(skills_csv_path: Path) -> SkillSpace:
     """SkillSpace loaded from example CSV."""
     skill_space = SkillSpace()
     skill_space.load_skills_from_csv(skills_csv_path)
@@ -38,7 +33,7 @@ def skill_space(skills_csv_path):
 
 
 @pytest.fixture()
-def practice_item_pool(tagged_items_csv_path, skill_space):
+def practice_item_pool(tagged_items_csv_path: Path, skill_space: SkillSpace) -> PracticeItemPool:
     """PracticeItemPool loaded from example CSV file."""
     pool = PracticeItemPool(items=[], skill_space=skill_space)
     pool.load_items_from_csv(tagged_items_csv_path)
@@ -46,7 +41,7 @@ def practice_item_pool(tagged_items_csv_path, skill_space):
 
 
 @pytest.fixture()
-def beginner_config():
+def beginner_config() -> dict:
     """Beginner learner config with a single root skill."""
     return {
         "mastered_skills": ["MA.6.NSO.1.1"],
@@ -55,7 +50,7 @@ def beginner_config():
 
 
 @pytest.fixture()
-def intermediate_config():
+def intermediate_config() -> dict:
     """Intermediate learner config with a few skills."""
     return {
         "mastered_skills": ["MA.6.NSO.1.1", "MA.6.NSO.1.2", "MA.6.NSO.1.3"],
@@ -64,13 +59,13 @@ def intermediate_config():
 
 
 @pytest.fixture()
-def chosen_learner_type():
+def chosen_learner_type() -> str:
     """Default learner type for tests."""
     return "beginner"
 
 
 @pytest.fixture()
-def selected_config(beginner_config, intermediate_config, chosen_learner_type):
+def selected_config(beginner_config: dict, intermediate_config: dict, chosen_learner_type: str) -> dict:
     """Configuration for the chosen learner type."""
     configs = {
         "beginner": beginner_config,
@@ -80,7 +75,7 @@ def selected_config(beginner_config, intermediate_config, chosen_learner_type):
 
 
 @pytest.fixture()
-def learner(skill_space, tmp_path, selected_config):
+def learner(skill_space: SkillSpace, tmp_path: Path, selected_config: dict) -> BinarySkillsFlexLearner:
     """BinarySkillsFlexLearner initialized with selected skill config."""
     practice_file = tmp_path / "test_practice_conversations.jsonl"
     practice_file.touch()
@@ -93,25 +88,25 @@ def learner(skill_space, tmp_path, selected_config):
 
 
 @pytest.fixture()
-def student_pool(learner):
+def student_pool(learner: BinarySkillsFlexLearner) -> StudentPool:
     """StudentPool with one learner."""
     return StudentPool(id="test-pool", learners=[learner])
 
 
 @pytest.fixture()
-def random_practice_item(practice_item_pool) -> PracticeItem:
+def random_practice_item(practice_item_pool: PracticeItemPool) -> PracticeItem:
     """A random practice item from the pool."""
     return practice_item_pool.get_random_item()
 
 
 @pytest.fixture()
-def session_id():
+def session_id() -> str:
     """Unique session ID."""
     return str(uuid.uuid4())[:8]
 
 
 @pytest.fixture()
-def helpful_tutor(practice_item_pool):
+def helpful_tutor(practice_item_pool: PracticeItemPool) -> Tutor:
     """A Tutor configured to be helpful (strategy not initialized)."""
     return Tutor(
         id=str(uuid.uuid4()),
@@ -123,7 +118,7 @@ def helpful_tutor(practice_item_pool):
 
 
 @pytest.fixture()
-def unhelpful_tutor(practice_item_pool):
+def unhelpful_tutor(practice_item_pool: PracticeItemPool) -> Tutor:
     """A Tutor configured to be unhelpful (strategy not initialized)."""
     return Tutor(
         id=str(uuid.uuid4()),

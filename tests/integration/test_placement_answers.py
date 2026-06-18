@@ -8,6 +8,8 @@ import pytest
 from evalconvolearn.benchmarks.flexlearners.placement_test_benchmark import (
     PlacementTestBenchmark,
 )
+from evalconvolearn.models.practice_item import PracticeItemPool
+from evalconvolearn.models.skill import SkillSpace
 
 
 @pytest.mark.benchmark()
@@ -16,11 +18,11 @@ class TestPlacementTestBenchmark:
 
     def test_benchmark_initializes(
         self,
-        skill_space,
-        practice_item_pool,
-        placement_test_skill_levels,
-        tmp_path,
-    ):
+        skill_space: SkillSpace,
+        practice_item_pool: PracticeItemPool,
+        placement_test_skill_levels: dict,
+        tmp_path: Path,
+    ) -> None:
         benchmark = PlacementTestBenchmark(
             skill_space=skill_space,
             practice_item_pool=practice_item_pool,
@@ -35,11 +37,11 @@ class TestPlacementTestBenchmark:
 
     def test_benchmark_runs_one_level(
         self,
-        skill_space,
-        practice_item_pool,
-        placement_test_skill_levels,
-        tmp_path,
-    ):
+        skill_space: SkillSpace,
+        practice_item_pool: PracticeItemPool,
+        placement_test_skill_levels: dict,
+        tmp_path: Path,
+    ) -> None:
         benchmark = PlacementTestBenchmark(
             skill_space=skill_space,
             practice_item_pool=practice_item_pool,

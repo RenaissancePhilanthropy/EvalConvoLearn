@@ -17,6 +17,14 @@ More importantly, it can evaluate the realism of learner simulations by comparin
 | Multi-Conversation Practice | Does the learner progress coherently across multiple sessions? |
 | Dataset-Fitted | Does the learner's conversation behavior match real tutoring data? |
 
+## Citation
+
+This library accompanies the Evaluating Learner Simulations with EvalConvoLearn paper (To be added) being presented at the [IRAISE](https://safeinsights.github.io/iraise26/) workshop:
+
+```
+Upcoming citation.
+```
+
 ## Installation
 
 ```bash

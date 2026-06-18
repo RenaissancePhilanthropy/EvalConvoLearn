@@ -1,8 +1,9 @@
 import logging
 import os
 from collections import deque
+from collections.abc import Iterator, Sequence
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Self, cast, overload
 
 import networkx as nx
 import pandas as pd
@@ -28,11 +29,9 @@ class Skill(BaseModel):
 
     id: str  # required - as part of a skill base
     description: str  # required - skill meaning used for practice
-    prerequisites: list[str] = (
-        []
-    )  # list of prerequisite skill IDs - are not validated to be existing skills
+    prerequisites: list[str] = []  # list of prerequisite skill IDs - are not validated to be existing skills
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         # two skills are equal if they have the same id or description, regardless of prerequisites
         if not isinstance(other, Skill):
             return NotImplemented
@@ -40,7 +39,7 @@ class Skill(BaseModel):
 
     # validate unique prerequisite skills
     @model_validator(mode="after")
-    def validate_unique_prerequisites(self):
+    def validate_unique_prerequisites(self) -> Self:
         if len(self.prerequisites) != len(set(self.prerequisites)):
             # find a duplicate prerequisite skill to inform the error
             for sid in self.prerequisites:
@@ -54,7 +53,7 @@ class Skill(BaseModel):
         return self
 
     # add a new prerequisite skill to the prerequisites list
-    def add_prerequisite(self, skill_id: str):
+    def add_prerequisite(self, skill_id: str) -> None:
         if skill_id in self.prerequisites:
             raise ValueError(
                 f"Prerequisite skill with id {skill_id} already exists for Skill {self.id}.",
@@ -69,12 +68,9 @@ class SkillSpace(BaseModel):
     """
 
     skills: list[Skill] = []
-    _skill_graph: nx.DiGraph | None = (
-        None  # internal graph of skill ids for the prerequisite structure
-    )
+    _skill_graph: nx.DiGraph | None = None  # internal graph of skill ids for the prerequisite structure
 
-    @model_validator(mode="after")
-    def validate_unique_skills_and_prerequisite_structure(self):
+    def _check_unique_skills_and_prerequisite_structure(self) -> None:
         skill_ids = [skill.id for skill in self.skills]
         if len(skill_ids) != len(set(skill_ids)):
             # find a duplicate skill to inform the error
@@ -101,15 +97,21 @@ class SkillSpace(BaseModel):
 
         for skill in self.skills:
             for prerequisite_id in skill.prerequisites:
-                assert (
-                    prerequisite_id in skill_ids
-                ), f"Prerequisite skill ID {prerequisite_id} for skill {skill.id} does not exist in SkillSpace."
+                assert prerequisite_id in skill_ids, (
+                    f"Prerequisite skill ID {prerequisite_id} for skill {skill.id} does not exist in SkillSpace."
+                )
                 graph.add_edge(prerequisite_id, skill.id)
         graph_string = f"Graph Nodes: {graph.nodes()}, Edges: {graph.edges()}"
         assert nx.is_directed_acyclic_graph(
             graph,
         ), f"Prerequisite structure contains cycles:\n{graph_string}"
-        self._skill_graph = graph  # cache the graph for future use in methods that need to traverse the prerequisite structure
+        self._skill_graph = (
+            graph  # cache the graph for future use in methods that need to traverse the prerequisite structure
+        )
+
+    @model_validator(mode="after")
+    def validate_unique_skills_and_prerequisite_structure(self) -> Self:
+        self._check_unique_skills_and_prerequisite_structure()
         return self
 
     # get a skill by its ID
@@ -120,7 +122,7 @@ class SkillSpace(BaseModel):
         raise ValueError(f"Skill with id {skill_id} not found in SkillSpace.")
 
     # equality of SkillSpace based on skills
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, SkillSpace):
             return NotImplemented
         # Compare by skill IDs since Skill objects are not hashable
@@ -130,13 +132,13 @@ class SkillSpace(BaseModel):
         other_skill_ids = {skill.id for skill in other.skills}
         return self_skill_ids == other_skill_ids
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.skills)
 
     def __getitem__(self, skill_id: str) -> Skill:
         return self.get_skill(skill_id)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Skill]:  # type: ignore[override]
         return iter(self.skills)
 
     # SkillSpace contains method
@@ -198,6 +200,23 @@ class SkillSpace(BaseModel):
         return [skill for skill in self.get_root_skills() if skill.id in all_prereq_ids]
 
     # get all the prerequisites recursively for a given skill ID
+    @overload
+    def get_all_prerequisites(
+        self,
+        skill_object: str | Skill,
+        include_self: bool = ...,
+        *,
+        return_as_ids: Literal[True],  # keyword only with no default
+    ) -> list[str]: ...
+
+    @overload
+    def get_all_prerequisites(
+        self,
+        skill_object: str | Skill,
+        include_self: bool = ...,
+        return_as_ids: Literal[False] = ...,
+    ) -> list[Skill]: ...
+
     def get_all_prerequisites(
         self,
         skill_object: str | Skill,
@@ -214,7 +233,7 @@ class SkillSpace(BaseModel):
             )
         all_prereqs = set()
 
-        def _get_prereqs_recursive(sid: str):
+        def _get_prereqs_recursive(sid: str) -> None:
             sk = self.get_skill(sid)
             for prereq_id in sk.prerequisites:
                 if prereq_id not in all_prereqs:
@@ -231,7 +250,7 @@ class SkillSpace(BaseModel):
     def get_prerequisite_path_to_skill_from_skill_group(
         self,
         target_skill: str | Skill,
-        skill_group: list[str | Skill],
+        skill_group: Sequence[str | Skill],
     ) -> list[Skill]:
         """Returns one of the shortest, if existing,
         ordered list of skills (by prerequisite relationship) from any skill in the prerequisite skill group TO the target skill.
@@ -275,7 +294,7 @@ class SkillSpace(BaseModel):
         # No path found, return just the target skill
         return [target]
 
-    def render_skill_path(self, skill_path: list[Skill], type="first_mastered_only"):
+    def render_skill_path(self, skill_path: list[Skill], type: str = "first_mastered_only") -> str:
         """Render a skill path as a meaningful string showing the skills' descriptions in a row with tags."""
         final_string = ""
         if not skill_path:
@@ -283,13 +302,9 @@ class SkillSpace(BaseModel):
         if type == "first_mastered_only":
             if len(skill_path) == 1:
                 return f"[{skill_path[0].id} UNMASTERED but no prerequisites needed] <{skill_path[0].description}>"
-            final_string += (
-                f"[{skill_path[0].id} MASTERED] <{skill_path[0].description}>"
-            )
+            final_string += f"[{skill_path[0].id} MASTERED] <{skill_path[0].description}>"
             for sk in skill_path[1:]:
-                final_string += (
-                    f" --> [{skill_path[0].id} UNMASTERED] <{sk.description}>"
-                )
+                final_string += f" --> [{skill_path[0].id} UNMASTERED] <{sk.description}>"
         else:
             raise NotImplementedError(
                 "Only skill path rendering using first mastered only type implemented",
@@ -322,9 +337,7 @@ class SkillSpace(BaseModel):
         # Adjust prompt based on mode
         if mode == "single":
             selection_instruction = "Select the SINGLE most relevant skill required to solve this problem. There may be cases where no skill is relevant; in such cases, respond with an empty list."
-            response_format = (
-                "Your answer should be a list with a single integer (e.g., [5])."
-            )
+            response_format = "Your answer should be a list with a single integer (e.g., [5])."
         else:
             selection_instruction = """Select the HIGHEST-LEVEL skill(s) specifically required to solve this problem.
             There may be cases where no skill is relevant; in such cases, respond with an empty list.
@@ -333,9 +346,7 @@ IMPORTANT RULES:
 1. Only select the most advanced/highest-level skills directly needed
 2. Do NOT select prerequisite skills that are implied by higher-level skills
 3. For example: If a problem requires a higher-level skill that has prerequisites, don't include those prerequisite skills"""
-            response_format = (
-                "Your answer should be a list of integers (e.g., [1, 5, 10])."
-            )
+            response_format = "Your answer should be a list of integers (e.g., [1, 5, 10])."
 
         prompt = f"""Given the following practice item/problem:
 "{item_text}"
@@ -367,9 +378,7 @@ Then provide your answer as a list of integers (1-indexed) corresponding to rele
             if content is None:
                 return []
             # Convert 1-indexed answers to 0-indexed and validate
-            selected_indices = [
-                idx - 1 for idx in content.answer if 0 < idx <= len(self.skills)
-            ]
+            selected_indices = [idx - 1 for idx in content.answer if 0 < idx <= len(self.skills)]
             # Get skill objects for selected indices
             selected_skills = [self.skills[idx] for idx in selected_indices]
 
@@ -382,7 +391,7 @@ Then provide your answer as a list of integers (1-indexed) corresponding to rele
         except Exception as e:
             raise RuntimeError(f"Failed to get skill selection from LLM: {e}") from e
 
-    def load_skills_from_csv(self, file_path: str | Path):
+    def load_skills_from_csv(self, file_path: str | Path) -> None:
         """Load skills from a CSV using pandas, using columns:
         skill_id, skill_description, prerequisite_skills (comma-separated).
 
@@ -404,7 +413,7 @@ Then provide your answer as a list of integers (1-indexed) corresponding to rele
             )
             self.skills.append(skill)
 
-        self.validate_unique_skills_and_prerequisite_structure()
+        self._check_unique_skills_and_prerequisite_structure()
 
     def get_unique_separate_subgraphs_for_skills(
         self,
@@ -436,11 +445,11 @@ Then provide your answer as a list of integers (1-indexed) corresponding to rele
                 sorted_component = list(
                     reversed(
                         list(
-                            nx.topological_sort(self._skill_graph.subgraph(component)),
+                            nx.topological_sort(cast(nx.DiGraph, self._skill_graph.subgraph(component))),
                         ),
                     ),
                 )
-                subgraphs.append([self.get_skill(sid) for sid in sorted_component])
+                subgraphs.append([self.get_skill(str(sid)) for sid in sorted_component])
         return subgraphs
 
     def get_bfs_skill_order(
@@ -469,8 +478,7 @@ Then provide your answer as a list of integers (1-indexed) corresponding to rele
         """
         if self._skill_graph is None:
             raise ValueError(
-                "Internal skill graph not found. Ensure that the SkillSpace "
-                "is properly initialized and validated.",
+                "Internal skill graph not found. Ensure that the SkillSpace is properly initialized and validated.",
             )
 
         target_skill = self.get_skill(target_skill_id)
@@ -482,14 +490,14 @@ Then provide your answer as a list of integers (1-indexed) corresponding to rele
         )
         root_skill_ids = {sk.id for sk in self.get_root_skills()}
 
-        subgraph = self._skill_graph.subgraph(all_prereqs).copy()
+        subgraph = cast(nx.DiGraph, self._skill_graph.subgraph(all_prereqs).copy())
         topo_order = list(nx.topological_sort(subgraph))
 
         # Filter out root skills (learner already has them)
         ordered_skills = [
-            self.get_skill(sid)
+            self.get_skill(str(sid))
             for sid in topo_order
-            if not (filter_out_root_skills and sid in root_skill_ids)
+            if not (filter_out_root_skills and str(sid) in root_skill_ids)
         ]
         return ordered_skills
 
@@ -519,7 +527,7 @@ Then provide your answer as a list of integers (1-indexed) corresponding to rele
                 "Internal skill graph not found. Ensure that the SkillSpace is properly initialized and validated.",
             )
         subgraphs = []
-        all_prereq_subgraph = self._skill_graph.subgraph(all_prereq_ids)
+        all_prereq_subgraph = cast(nx.DiGraph, self._skill_graph.subgraph(all_prereq_ids))
         logger.debug(
             "Subgraph of all prerequisites - Nodes: %s, Edges: %s",
             all_prereq_subgraph.nodes(),
@@ -528,9 +536,9 @@ Then provide your answer as a list of integers (1-indexed) corresponding to rele
         for component in nx.weakly_connected_components(all_prereq_subgraph):
             sorted_component = list(
                 reversed(
-                    list(nx.topological_sort(all_prereq_subgraph.subgraph(component))),
+                    list(nx.topological_sort(cast(nx.DiGraph, all_prereq_subgraph.subgraph(component)))),
                 ),
             )
             logger.debug("Component: %s, Sorted: %s", component, sorted_component)
-            subgraphs.append([self.get_skill(sid) for sid in sorted_component])
+            subgraphs.append([self.get_skill(str(sid)) for sid in sorted_component])
         return subgraphs

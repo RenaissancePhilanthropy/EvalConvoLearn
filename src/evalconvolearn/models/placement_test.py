@@ -1,11 +1,16 @@
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING, Self
 
 from pydantic import BaseModel, model_validator
 
-from ..core.flexlearner import FlexLearner
+if TYPE_CHECKING:
+    from ..core.flexlearner import FlexLearner
+    from .binary_skills_flexlearner import BinarySkillsFlexLearner
+
 from ..models.practice_item import PracticeItem, PracticeItemPool
 from ..models.skill import Skill
-from .binary_skills_flexlearner import BinarySkillsFlexLearner
 
 logger = logging.getLogger(__name__)
 
@@ -15,32 +20,20 @@ class PracticeItemResult(BaseModel):
 
     practice_item: PracticeItem
     is_correct: bool
-    required_skills: list[
-        str
-    ]  # All skills (including prerequisites) required to answer correctly
-    learner_has_all_required_skills: bool | None = (
-        None  # Whether learner has all required skills (if checked)
-    )
+    required_skills: list[str]  # All skills (including prerequisites) required to answer correctly
+    learner_has_all_required_skills: bool | None = None  # Whether learner has all required skills (if checked)
     learner_answer: str | None = None  # The learner's actual answer (if provided)
-    learner_choice_index: int | None = (
-        None  # Index of learner's choice in answer_choices (if multiple choice)
-    )
+    learner_choice_index: int | None = None  # Index of learner's choice in answer_choices (if multiple choice)
     correct_answer: str = ""  # The correct answer from the practice item
     incorrect_answers: list[str] = []  # Incorrect answer choices (for multiple choice)
     answer_choices: list[str] = []  # All answer choices presented (for multiple choice)
-    answer_choice_letters: list[str] = (
-        []
-    )  # Letters assigned to answer choices (e.g., A, B, C)
+    answer_choice_letters: list[str] = []  # Letters assigned to answer choices (e.g., A, B, C)
     correct_choice_index: int = -1  # Index of correct answer in answer_choices
-    correct_answer_letter: str | None = (
-        None  # Letter of the correct answer choice (e.g., "A", "B")
-    )
-    prompt_content: str = (
-        ""  # The full prompt text sent to the LLM for answer generation
-    )
+    correct_answer_letter: str | None = None  # Letter of the correct answer choice (e.g., "A", "B")
+    prompt_content: str = ""  # The full prompt text sent to the LLM for answer generation
 
     @model_validator(mode="after")
-    def set_correct_answer_and_choices(self):
+    def set_correct_answer_and_choices(self) -> Self:
         """Set the correct answer and choices from the practice item."""
         self.correct_answer = self.practice_item.get_answer()
         # Set incorrect answers from the practice item if not already set
@@ -99,10 +92,7 @@ class PlacementTest(BaseModel):
         for prereq in prerequisites:
             all_required_skills.add(prereq.id)
 
-        return [
-            self.practice_item_pool.skill_space.get_skill(skill_id)
-            for skill_id in all_required_skills
-        ]
+        return [self.practice_item_pool.skill_space.get_skill(skill_id) for skill_id in all_required_skills]
 
     def _can_learner_answer_correctly(
         self,
@@ -126,6 +116,8 @@ class PlacementTest(BaseModel):
         whether the learner's knowledge is sufficient.
 
         """
+        from .binary_skills_flexlearner import BinarySkillsFlexLearner
+
         required_skills = self._get_all_required_skills_for_item(practice_item)
 
         if type(learner) is BinarySkillsFlexLearner:
@@ -149,8 +141,7 @@ class PlacementTest(BaseModel):
             learner_knowledge=knowledge_text,
         )
         logger.info(
-            "[PlacementTest] Knowledge sufficiency check for non-Learner — "
-            "can_answer=%s, reasoning='%s'",
+            "[PlacementTest] Knowledge sufficiency check for non-Learner — can_answer=%s, reasoning='%s'",
             verdict.can_answer_correctly,
             verdict.reasoning[:120],
         )
@@ -180,10 +171,7 @@ class PlacementTest(BaseModel):
         if answer_choices:
             letters = [chr(ord("A") + i) for i in range(len(answer_choices))]
             answer_choices_text = "\n".join(
-                [
-                    f"{letter}. {choice}"
-                    for letter, choice in zip(letters, answer_choices, strict=False)
-                ],
+                [f"{letter}. {choice}" for letter, choice in zip(letters, answer_choices, strict=False)],
             )
             answer_choices_text = f"Answer choices:\n{answer_choices_text}"
             response_instructions = (
@@ -281,8 +269,7 @@ Make a reasonable response attempt that shows an error typical of students who s
         if check_if_has_knowledge_before_answering:
             can_answer = self._can_learner_answer_correctly(item, learner)
             logger.info(
-                "[PlacementTest] Skill check for item '%s': "
-                "required_skills=%s, can_answer_correctly=%s",
+                "[PlacementTest] Skill check for item '%s': required_skills=%s, can_answer_correctly=%s",
                 item.text[:60],
                 [s.id for s in required_skills],
                 can_answer,
@@ -304,9 +291,7 @@ Make a reasonable response attempt that shows an error typical of students who s
 
         if effective_use_multiple_choice and incorrect_answers:
             answer_choices = item.get_all_choices(shuffle=True)
-            answer_choice_letters = [
-                chr(ord("A") + i) for i in range(len(answer_choices))
-            ]
+            answer_choice_letters = [chr(ord("A") + i) for i in range(len(answer_choices))]
 
         # Get learner's answer via LLM if requested
         prompt_content = ""
@@ -491,11 +476,7 @@ Make a reasonable response attempt that shows an error typical of students who s
                 )
 
             # Find items associated with this skill
-            matching_items = [
-                item
-                for item in self.practice_item_pool.items
-                if skill_id in item.associated_skills
-            ]
+            matching_items = [item for item in self.practice_item_pool.items if skill_id in item.associated_skills]
 
             if not matching_items:
                 raise ValueError(
@@ -533,22 +514,15 @@ Make a reasonable response attempt that shows an error typical of students who s
 
         correct_count = sum(1 for result in self.test_results if result.is_correct)
         total_count = len(self.test_results)
-        items_with_answers = sum(
-            1 for result in self.test_results if result.learner_answer is not None
-        )
+        items_with_answers = sum(1 for result in self.test_results if result.learner_answer is not None)
         answers_validated = sum(
             1
             for result in self.test_results
-            if result.learner_answer is not None
-            and self.validate_answer(result.learner_answer, result.correct_answer)
+            if result.learner_answer is not None and self.validate_answer(result.learner_answer, result.correct_answer)
         )
 
-        expected_correct = [
-            r for r in self.test_results if r.learner_has_all_required_skills is True
-        ]
-        expected_incorrect = [
-            r for r in self.test_results if r.learner_has_all_required_skills is False
-        ]
+        expected_correct = [r for r in self.test_results if r.learner_has_all_required_skills is True]
+        expected_incorrect = [r for r in self.test_results if r.learner_has_all_required_skills is False]
 
         expected_correct_count = len(expected_correct)
         expected_incorrect_count = len(expected_incorrect)
@@ -563,28 +537,20 @@ Make a reasonable response attempt that shows an error typical of students who s
             "accuracy": correct_count / total_count if total_count > 0 else 0.0,
             "items_with_answers": items_with_answers,
             "answers_validated": answers_validated,
-            "answer_validation_rate": (
-                answers_validated / items_with_answers
-                if items_with_answers > 0
-                else 0.0
-            ),
+            "answer_validation_rate": (answers_validated / items_with_answers if items_with_answers > 0 else 0.0),
             "expected_correct_count": expected_correct_count,
             "expected_incorrect_count": expected_incorrect_count,
             "aligned_when_expected_correct": aligned_correct,
             "aligned_when_expected_incorrect": aligned_incorrect,
             "pct_aligned_when_expected_correct": (
-                aligned_correct / expected_correct_count
-                if expected_correct_count > 0
-                else None
+                aligned_correct / expected_correct_count if expected_correct_count > 0 else None
             ),
             "pct_aligned_when_expected_incorrect": (
-                aligned_incorrect / expected_incorrect_count
-                if expected_incorrect_count > 0
-                else None
+                aligned_incorrect / expected_incorrect_count if expected_incorrect_count > 0 else None
             ),
         }
 
-    def clear_results(self):
+    def clear_results(self) -> None:
         """Clear all test results to start a new test."""
         self.test_results = []
 

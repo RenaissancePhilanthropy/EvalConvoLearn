@@ -281,9 +281,7 @@ class SimpleKnowledgeGraph:
         self.nodes = {nid: dict(ndata) for nid, ndata in state.get("nodes", {}).items()}
         self.relations = dict(state.get("relations", {}))
         self.triplets = [list(t) for t in state.get("triplets", [])]
-        self.embedding_dict = {
-            k: list(v) for k, v in state.get("embedding_dict", {}).items()
-        }
+        self.embedding_dict = {k: list(v) for k, v in state.get("embedding_dict", {}).items()}
         self.metadata_dict = dict(state.get("metadata_dict", {}))
 
     @property
@@ -347,9 +345,7 @@ class KnowledgeGraphLearner(FlexLearner):
         relevant = self.kg.retrieve_knowledge_for_query(query, top_k=5)
         if not relevant:
             return "You have no relevant prior knowledge for this problem."
-        return "Relevant knowledge from your knowledge graph:\n" + "\n".join(
-            f"- {r}" for r in relevant
-        )
+        return "Relevant knowledge from your knowledge graph:\n" + "\n".join(f"- {r}" for r in relevant)
 
     def get_required_knowledge_to_answer_practice_item(
         self,
@@ -464,7 +460,6 @@ def build_initial_kg_snapshot(triplets: list[dict]) -> dict:
         kg.add_triplet(Triplet(**t))
     snapshot = kg.get_state()
     print(
-        f"[build_initial_kg_snapshot] Done — {kg.num_nodes} node(s), "
-        f"{kg.num_triplets} triplet(s) stored in snapshot.",
+        f"[build_initial_kg_snapshot] Done — {kg.num_nodes} node(s), {kg.num_triplets} triplet(s) stored in snapshot.",
     )
     return snapshot

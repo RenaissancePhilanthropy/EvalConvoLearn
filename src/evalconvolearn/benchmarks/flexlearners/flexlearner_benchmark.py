@@ -2,6 +2,7 @@
 
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 
 from ...models.binary_skills_flexlearner import StudentPool
@@ -25,7 +26,7 @@ class FlexLearnerBenchmark(ABC):
         learner_pool: StudentPool | None = None,
         learner_config: LearnerEvalConfig | None = None,
         benchmark_extra_args: dict | None = None,
-    ):
+    ) -> None:
         """Initialize shared benchmark state.
 
         Args:
@@ -56,7 +57,7 @@ class FlexLearnerBenchmark(ABC):
 
     def _resolve_skill_levels(
         self,
-        skill_levels: dict[str, set[str]],
+        skill_levels: Mapping[str, Iterable[str]],
     ) -> dict[str, set[str]]:
         """Apply ``learner_config`` overrides to a ``skill_levels`` mapping.
 
@@ -82,10 +83,10 @@ class FlexLearnerBenchmark(ABC):
                 does not exist in ``skill_levels``.
 
         """
-        resolved = skill_levels
+        resolved: dict[str, set[str]] = {k: set(v) for k, v in skill_levels.items()}
 
         if self.learner_config and self.learner_config.mastered_skills:
-            resolved = {"default": self.learner_config.mastered_skills}
+            resolved = {"default": set(self.learner_config.mastered_skills)}
 
         if self.learner_config and self.learner_config.learner_level:
             specified_level = self.learner_config.learner_level
@@ -116,8 +117,7 @@ class FlexLearnerBenchmark(ABC):
             missing_skills = set(skills) - all_skill_ids
             if missing_skills:
                 raise ValueError(
-                    f"Skills defined for learner level '{level}' are missing from "
-                    f"skill space: {missing_skills}",
+                    f"Skills defined for learner level '{level}' are missing from skill space: {missing_skills}",
                 )
 
     # ------------------------------------------------------------------

@@ -367,12 +367,9 @@ def main() -> int:
     timestamp = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
 
     output_paths = {
-        "skill": REVIEW_DIRS["skill"]
-        / f"{args.output_prefix}_skill_tagging_{timestamp}.md",
-        "mastery": REVIEW_DIRS["mastery"]
-        / f"{args.output_prefix}_mastery_{timestamp}.md",
-        "behavior": REVIEW_DIRS["behavior"]
-        / f"{args.output_prefix}_behavior_{timestamp}.md",
+        "skill": REVIEW_DIRS["skill"] / f"{args.output_prefix}_skill_tagging_{timestamp}.md",
+        "mastery": REVIEW_DIRS["mastery"] / f"{args.output_prefix}_mastery_{timestamp}.md",
+        "behavior": REVIEW_DIRS["behavior"] / f"{args.output_prefix}_behavior_{timestamp}.md",
     }
 
     _write_review_packet(

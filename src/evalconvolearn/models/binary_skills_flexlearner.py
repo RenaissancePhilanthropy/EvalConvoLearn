@@ -1,15 +1,16 @@
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Self
 
 import pandas as pd
 from pydantic import BaseModel, model_validator
 
-logger = logging.getLogger(__name__)
-
 from ..core.flexlearner import FlexLearner
 from .practice_item import PracticeItem
 from .skill import Skill, SkillSpace
+
+logger = logging.getLogger(__name__)
 
 
 class BinarySkillsFlexLearner(FlexLearner):
@@ -19,7 +20,7 @@ class BinarySkillsFlexLearner(FlexLearner):
     This is the original learner that uses binary skill mastery.
     """
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         """Initialize learner data."""
         super().__init__(**data)
 
@@ -44,28 +45,19 @@ class BinarySkillsFlexLearner(FlexLearner):
         knowledge_attrs: dict | None = None,
     ) -> str:
         """Return mastered skills relevant to the problem."""
-        mastered_problem_skills = [
-            sk for sk in item_skills if sk.id in self.mastered_skills
-        ]
+        mastered_problem_skills = [sk for sk in item_skills if sk.id in self.mastered_skills]
         if not mastered_problem_skills:
             return "You have not mastered any of the skills required for this problem."
         lines = [f"- {sk.id}: {sk.description}" for sk in mastered_problem_skills]
 
-        skill_paths_rendered = (
-            knowledge_attrs.get("skill_paths_rendered", "") if knowledge_attrs else ""
-        )
+        skill_paths_rendered = knowledge_attrs.get("skill_paths_rendered", "") if knowledge_attrs else ""
         knowledge_gaps = (
             f"Knowledge gaps (skills you still need to learn):\n{skill_paths_rendered}"
             if skill_paths_rendered
             else "Knowledge gaps (skills you still need to learn): None identified yet."
         )
 
-        return (
-            "Skills you have mastered that are relevant:\n"
-            + "\n".join(lines)
-            + "\n"
-            + knowledge_gaps
-        )
+        return "Skills you have mastered that are relevant:\n" + "\n".join(lines) + "\n" + knowledge_gaps
 
     def get_required_knowledge_to_answer_practice_item(
         self,
@@ -105,12 +97,12 @@ class BinarySkillsFlexLearner(FlexLearner):
         mastering skills (already done before this call). No-op here.
         """
 
-    def initialize_learner_knowledge(self, *args, **kwargs) -> None:
+    def initialize_learner_knowledge(self, *args: Any, **kwargs: Any) -> None:
         """No need to extend this for the default skill-binary learner,
         but this can be overridden in custom learners.
         """
 
-    def initialize_from_skills(self, skill_ids: list[str]) -> None:
+    def initialize_from_skills(self, mastered_skill_ids: list[str], **kwargs: Any) -> None:
         """Initialize the learner's knowledge state from a list of skill IDs."""
         raise NotImplementedError(
             "This method is not implemented for the Learner, because it already "
@@ -122,7 +114,7 @@ class BinarySkillsFlexLearner(FlexLearner):
     # ------------------------------------------------------------------ #
 
     @model_validator(mode="after")
-    def validate_unique_skills_and_skills_are_in_space(self):
+    def validate_unique_skills_and_skills_are_in_space(self) -> Self:
         if not self.practice_conversations_file:
             raise ValueError(
                 "practice_conversations_file must be provided for Learner.",
@@ -148,9 +140,9 @@ class BinarySkillsFlexLearner(FlexLearner):
                     )
 
         for sid in self.mastered_skills:
-            assert (
-                sid in self.skill_space
-            ), f"Skill with id {sid} in Learner skills is not part of the defined SkillSpace."
+            assert sid in self.skill_space, (
+                f"Skill with id {sid} in Learner skills is not part of the defined SkillSpace."
+            )
 
         if (len(self.mastered_skills) > 0) and (len(self.practice_history) == 0):
             self.log_new_practice(
@@ -178,32 +170,26 @@ class StudentPool(BaseModel):
     """
 
     id: str
-    learner_class: type = (
-        BinarySkillsFlexLearner  # Default learner class for this student pool
-    )
+    learner_class: type = BinarySkillsFlexLearner  # Default learner class for this student pool
     learners: list[FlexLearner] = []  # Accepts any FlexLearner subclass
     skill_spaces: list[SkillSpace] = []
     unique_skills: list[Skill] = []
     base_directory: str | Path = "data/student_pools/"
-    directory_file: str | Path | None = None
-    practice_conversations_file: str | Path | None = None
+    directory_file: str | Path = ""
+    practice_conversations_file: str | Path = ""
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         """Initialize student_pool data."""
         super().__init__(**data)
 
         if not self.directory_file:
             current_timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-            self.directory_file = (
-                Path(self.base_directory) / f"{self.id}_{current_timestamp}"
-            )
+            self.directory_file = Path(self.base_directory) / f"{self.id}_{current_timestamp}"
             self.directory_file.mkdir(parents=True, exist_ok=True)
         self.directory_file = Path(self.directory_file)
 
         if not self.practice_conversations_file:
-            self.practice_conversations_file = (
-                self.directory_file / "all_conversations.jsonl"
-            )
+            self.practice_conversations_file = self.directory_file / "all_conversations.jsonl"
             self.practice_conversations_file.parent.mkdir(parents=True, exist_ok=True)
             if not self.practice_conversations_file.exists():
                 self.practice_conversations_file.touch()
@@ -220,7 +206,7 @@ class StudentPool(BaseModel):
                 if skill not in self.unique_skills:
                     self.unique_skills.append(skill)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.learners)
 
     def get_learner(self, learner_id: str) -> FlexLearner | None:
@@ -235,7 +221,7 @@ class StudentPool(BaseModel):
             raise KeyError(f"Learner with id {learner_id} not found.")
         return learner
 
-    def add_learner(self, learner: FlexLearner):
+    def add_learner(self, learner: FlexLearner) -> None:
         if any(learner.id == lea.id for lea in self.learners):
             raise ValueError(f"Learner with id {learner.id} already exists.")
         self.learners.append(learner)
@@ -245,7 +231,7 @@ class StudentPool(BaseModel):
         learner_id: str,
         mastered_skills: list[str],
         skill_space: SkillSpace,
-        **kwargs,
+        **kwargs: Any,
     ) -> FlexLearner:
         if any(learner_id == lea.id for lea in self.learners):
             raise ValueError(f"Learner with id {learner_id} already exists.")
@@ -266,13 +252,10 @@ class StudentPool(BaseModel):
         self.learners.append(new_learner)
         return new_learner
 
-    def remove_learner(self, learner_id: str):
-        self.learners = [
-            learner for learner in self.learners if learner.id != learner_id
-        ]
+    def remove_learner(self, learner_id: str) -> None:
+        self.learners = [learner for learner in self.learners if learner.id != learner_id]
 
-    @model_validator(mode="after")
-    def validate_unique_learners(self):
+    def _check_unique_learners(self) -> None:
         learner_ids = [learner.id for learner in self.learners]
         if len(learner_ids) != len(set(learner_ids)):
             for lid in learner_ids:
@@ -280,6 +263,10 @@ class StudentPool(BaseModel):
                     raise ValueError(
                         f"One or more duplicate learner IDs found in student_pool, e.g: {lid}",
                     )
+
+    @model_validator(mode="after")
+    def validate_unique_learners(self) -> Self:
+        self._check_unique_learners()
         return self
 
     def get_number_of_skillspaces(self) -> int:
@@ -292,17 +279,15 @@ class StudentPool(BaseModel):
         self,
         file_path: str | Path,
         skill_space: SkillSpace,
-    ):
+    ) -> None:
         try:
             if Path(file_path).exists():
                 df = pd.read_csv(file_path)
                 for _, row in df.iterrows():
-                    learner_id = row["learner_id"]
+                    learner_id = str(row["learner_id"])
                     session_id = row["session_id"]
                     mastered_skills_list = (
-                        row["mastered_skills_list"].split(",")
-                        if pd.notna(row["mastered_skills_list"])
-                        else []
+                        row["mastered_skills_list"].split(",") if pd.notna(row["mastered_skills_list"]) else []
                     )
                     learner = self.get_learner(learner_id)
                     if not learner:
@@ -312,6 +297,7 @@ class StudentPool(BaseModel):
                             skill_space=skill_space,
                         )
                         learner = self.get_learner(learner_id)
+                    assert learner is not None, f"Learner {learner_id} not found after creation"
                     for sk in mastered_skills_list:
                         learner.master_new_skill(sk)
                     learner.log_new_practice(
@@ -320,17 +306,17 @@ class StudentPool(BaseModel):
                             "mastered_skills_list": mastered_skills_list,
                         },
                     )
-                self.validate_unique_learners()
+                self._check_unique_learners()
             else:
                 pd.DataFrame(
-                    columns=["learner_id", "session_id", "mastered_skills_list"],
+                    columns=pd.Index(["learner_id", "session_id", "mastered_skills_list"]),
                 ).to_csv(file_path, index=False)
 
         except Exception:
             logger.exception("Error when loading existing student_pool from csv.")
             raise
 
-    def save_student_pool_practice_history_to_csv(self, file_path: str | Path):
+    def save_student_pool_practice_history_to_csv(self, file_path: str | Path) -> None:
         try:
             records = []
             for learner in self.learners:
@@ -354,8 +340,8 @@ class StudentPool(BaseModel):
         self,
         n_learners: int,
         skill_space: SkillSpace,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         for learner_id in range(n_learners):
             new_learner = self.learner_class(
                 id=learner_id,

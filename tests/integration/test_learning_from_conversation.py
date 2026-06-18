@@ -8,6 +8,8 @@ import pytest
 from evalconvolearn.benchmarks.flexlearners.learning_from_conversation_benchmark import (
     LearningFromConversationBenchmark,
 )
+from evalconvolearn.models.practice_item import PracticeItemPool
+from evalconvolearn.models.skill import SkillSpace
 
 
 @pytest.mark.benchmark()
@@ -16,12 +18,12 @@ class TestLearningFromConversationBenchmark:
 
     def test_benchmark_initializes(
         self,
-        skill_space,
-        practice_item_pool,
-        placement_test_skill_levels,
-        tutor_responses_mapping,
-        tmp_path,
-    ):
+        skill_space: SkillSpace,
+        practice_item_pool: PracticeItemPool,
+        placement_test_skill_levels: dict,
+        tutor_responses_mapping: dict,
+        tmp_path: Path,
+    ) -> None:
         if not tutor_responses_mapping:
             pytest.skip("No tutor responses available")
 
@@ -39,12 +41,12 @@ class TestLearningFromConversationBenchmark:
 
     def test_benchmark_runs_helpful_responses(
         self,
-        skill_space,
-        practice_item_pool,
-        placement_test_skill_levels,
-        tutor_responses_mapping,
-        tmp_path,
-    ):
+        skill_space: SkillSpace,
+        practice_item_pool: PracticeItemPool,
+        placement_test_skill_levels: dict,
+        tutor_responses_mapping: dict,
+        tmp_path: Path,
+    ) -> None:
         if not tutor_responses_mapping:
             pytest.skip("No tutor responses available")
 
@@ -68,12 +70,12 @@ class TestLearningFromConversationBenchmark:
 
     def test_benchmark_runs_unhelpful_responses(
         self,
-        skill_space,
-        practice_item_pool,
-        placement_test_skill_levels,
-        tutor_responses_mapping,
-        tmp_path,
-    ):
+        skill_space: SkillSpace,
+        practice_item_pool: PracticeItemPool,
+        placement_test_skill_levels: dict,
+        tutor_responses_mapping: dict,
+        tmp_path: Path,
+    ) -> None:
         if not tutor_responses_mapping:
             pytest.skip("No tutor responses available")
 

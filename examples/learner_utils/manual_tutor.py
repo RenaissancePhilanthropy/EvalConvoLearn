@@ -13,7 +13,7 @@ class ManualTutor(BaseTutor):
         return input("\n[YOUR RESPONSE as tutor]: ").strip()
 
 
-def main():
+def main() -> None:
     sdk = EvalConvoLearn()
 
     skill_space = sdk.load_skill_space(Path("data") / "florida-doe" / "skill-space.csv")

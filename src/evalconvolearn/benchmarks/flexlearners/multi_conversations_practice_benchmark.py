@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from collections.abc import Iterable, Mapping
 from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -67,7 +68,7 @@ class MultiConversationsPracticeBenchmark(FlexLearnerBenchmark):
         practice_item_pool: PracticeItemPool,
         oversampled_item_pool: PracticeItemPool | None = None,
         target_skills: dict[str, list[str]] | None = None,
-        skill_levels: dict[str, list[str] | set[str]] | None = None,
+        skill_levels: Mapping[str, Iterable[str]] | None = None,
         consolidation_runs: int = DEFAULT_CONSOLIDATION_RUNS,
         max_conversation_turns: int = DEFAULT_MAX_CONVERSATION_TURNS,
         max_climb_items_per_skill: int = DEFAULT_MAX_CLIMB_ITEMS_PER_SKILL,
@@ -75,7 +76,7 @@ class MultiConversationsPracticeBenchmark(FlexLearnerBenchmark):
         learner_pool: StudentPool | None = None,
         learner_config: LearnerEvalConfig | None = None,
         benchmark_extra_args: dict | None = None,
-    ):
+    ) -> None:
         super().__init__(
             skill_space=skill_space,
             practice_item_pool=practice_item_pool,
@@ -262,9 +263,7 @@ class MultiConversationsPracticeBenchmark(FlexLearnerBenchmark):
         Returns a result dict with climb and consolidation details.
         """
         self.logger.debug(
-            f"\n{'='*80}\n"
-            f"  Target skill: {target_skill_id}  (tier: {tier})\n"
-            f"{'='*80}",
+            f"\n{'=' * 80}\n  Target skill: {target_skill_id}  (tier: {tier})\n{'=' * 80}",
         )
 
         # 1. Compute BFS skill order from roots to target
@@ -275,9 +274,7 @@ class MultiConversationsPracticeBenchmark(FlexLearnerBenchmark):
         )
 
         # 2. Initialize learner with root skills that are part of the target skill's subgraph
-        root_skill_ids = [
-            sk.id for sk in self.skill_space.get_root_skills_for_target(target_skill_id)
-        ]
+        root_skill_ids = [sk.id for sk in self.skill_space.get_root_skills_for_target(target_skill_id)]
         learner_id = f"multi_conv_{tier}_{target_skill_id}_{self.test_run_id}"
         practice_file = tmp_dir / f"{learner_id}.jsonl"
 
@@ -326,21 +323,13 @@ class MultiConversationsPracticeBenchmark(FlexLearnerBenchmark):
 
                 current_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
                 session_id = f"{uuid.uuid4()}_{current_time_str}"
-                db_folder = (
-                    self.output_dir
-                    / self.test_run_id
-                    / tier
-                    / target_skill_id
-                    / "climb"
-                    / current_time_str
-                )
+                db_folder = self.output_dir / self.test_run_id / tier / target_skill_id / "climb" / current_time_str
                 db_folder.mkdir(parents=True, exist_ok=True)
 
                 mastered_before = set(learner.mastered_skills)
 
                 self.logger.debug(
-                    f"[Climb] skill={skill.id}, attempt={attempt_idx+1}, "
-                    f"item={item.text[:60]}...",
+                    f"[Climb] skill={skill.id}, attempt={attempt_idx + 1}, item={item.text[:60]}...",
                 )
 
                 conv_metrics = self._run_single_conversation(
@@ -410,8 +399,7 @@ class MultiConversationsPracticeBenchmark(FlexLearnerBenchmark):
 
         if target_mastered:
             self.logger.info(
-                f"\n--- Consolidation phase: {self.consolidation_runs} conversations "
-                f"on {target_skill_id} ---",
+                f"\n--- Consolidation phase: {self.consolidation_runs} conversations on {target_skill_id} ---",
             )
 
             # Use oversampled pool for consolidation items
@@ -434,18 +422,12 @@ class MultiConversationsPracticeBenchmark(FlexLearnerBenchmark):
                 current_time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
                 session_id = f"{uuid.uuid4()}_{current_time_str}"
                 db_folder = (
-                    self.output_dir
-                    / self.test_run_id
-                    / tier
-                    / target_skill_id
-                    / "consolidation"
-                    / current_time_str
+                    self.output_dir / self.test_run_id / tier / target_skill_id / "consolidation" / current_time_str
                 )
                 db_folder.mkdir(parents=True, exist_ok=True)
 
                 self.logger.debug(
-                    f"[Consolidation] run={consol_idx+1}/{self.consolidation_runs}, "
-                    f"item={item.text[:60]}...",
+                    f"[Consolidation] run={consol_idx + 1}/{self.consolidation_runs}, item={item.text[:60]}...",
                 )
 
                 conv_metrics = self._run_single_conversation(
@@ -485,21 +467,16 @@ class MultiConversationsPracticeBenchmark(FlexLearnerBenchmark):
                 )
         else:
             self.logger.info(
-                f"Target skill {target_skill_id} was NOT mastered. "
-                f"Skipping consolidation phase.",
+                f"Target skill {target_skill_id} was NOT mastered. Skipping consolidation phase.",
             )
 
         # 5. Compute summary metrics
         total_consolidation_runs = len(consolidation_records)
         consolidation_solution_rate = (
-            consolidation_solutions_found / total_consolidation_runs
-            if total_consolidation_runs > 0
-            else 0.0
+            consolidation_solutions_found / total_consolidation_runs if total_consolidation_runs > 0 else 0.0
         )
         avg_turns_per_skill = (
-            total_climb_turns / total_skills_learned_in_climb
-            if total_skills_learned_in_climb > 0
-            else float("inf")
+            total_climb_turns / total_skills_learned_in_climb if total_skills_learned_in_climb > 0 else float("inf")
         )
 
         result = {
@@ -583,23 +560,13 @@ class MultiConversationsPracticeBenchmark(FlexLearnerBenchmark):
                     all_results.append(result)
 
         # Compute aggregate metrics
-        total_skills_learned = sum(
-            r["total_skills_learned_in_climb"] for r in all_results
-        )
+        total_skills_learned = sum(r["total_skills_learned_in_climb"] for r in all_results)
         total_turns = sum(r["total_climb_turns"] for r in all_results)
-        overall_avg_turns_per_skill = (
-            total_turns / total_skills_learned
-            if total_skills_learned > 0
-            else float("inf")
-        )
+        overall_avg_turns_per_skill = total_turns / total_skills_learned if total_skills_learned > 0 else float("inf")
 
         total_consol_runs = sum(r["consolidation_runs_completed"] for r in all_results)
-        total_consol_solutions = sum(
-            r["consolidation_solutions_found"] for r in all_results
-        )
-        overall_consolidation_rate = (
-            total_consol_solutions / total_consol_runs if total_consol_runs > 0 else 0.0
-        )
+        total_consol_solutions = sum(r["consolidation_solutions_found"] for r in all_results)
+        overall_consolidation_rate = total_consol_solutions / total_consol_runs if total_consol_runs > 0 else 0.0
 
         summary = {
             "run_id": self.test_run_id,
@@ -615,9 +582,7 @@ class MultiConversationsPracticeBenchmark(FlexLearnerBenchmark):
                 "overall_consolidation_solution_rate": overall_consolidation_rate,
                 "total_targets": total_targets,
                 "targets_mastered": sum(1 for r in all_results if r["target_mastered"]),
-                "total_climb_conversations": sum(
-                    r["total_climb_conversations"] for r in all_results
-                ),
+                "total_climb_conversations": sum(r["total_climb_conversations"] for r in all_results),
                 "total_climb_turns": total_turns,
                 "total_skills_learned": total_skills_learned,
                 "total_consolidation_runs": total_consol_runs,
@@ -632,9 +597,9 @@ class MultiConversationsPracticeBenchmark(FlexLearnerBenchmark):
 
         # Print final summary
         print(
-            f"\n{'='*64}\n"
+            f"\n{'=' * 64}\n"
             f"  Multi-Conversation Practice Benchmark — Final Summary\n"
-            f"{'='*64}\n"
+            f"{'=' * 64}\n"
             f"  Run ID                          : {self.test_run_id}\n"
             f"  Targets evaluated               : {total_targets}\n"
             f"  Targets mastered                : {summary['aggregate_metrics']['targets_mastered']}\n"
@@ -643,7 +608,7 @@ class MultiConversationsPracticeBenchmark(FlexLearnerBenchmark):
             f"  Total climb conversations       : {summary['aggregate_metrics']['total_climb_conversations']}\n"
             f"  Total consolidation runs        : {total_consol_runs}\n"
             f"  Results saved to                : {output_file}\n"
-            f"{'='*64}\n",
+            f"{'=' * 64}\n",
         )
 
         self.logger.info("Results saved to: %s", output_file)

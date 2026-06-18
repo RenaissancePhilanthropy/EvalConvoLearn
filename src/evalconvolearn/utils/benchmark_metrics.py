@@ -1,11 +1,13 @@
 """Metric calculation functions for benchmark evaluations."""
 
+from ..models.placement_test import PracticeItemResult
+
 
 def calculate_placement_test_alignment(
-    result,
+    result: PracticeItemResult,
     expected_correct_skills: set[str],
     expected_incorrect_skills: set[str],
-) -> tuple[bool | None, bool]:
+) -> tuple[bool | None, bool | None]:
     """Calculate alignment for a single placement test result.
 
     Args:
@@ -18,14 +20,10 @@ def calculate_placement_test_alignment(
     -------
         tuple of (expected_correct, is_aligned):
             - expected_correct: True if skill should be correct, False if incorrect, None if not in matrix
-            - is_aligned: True if answer matches expectation
+            - is_aligned: True if answer matches expectation, False if not, None if not applicable
 
     """
-    skill_id = (
-        result.practice_item.associated_skills[0]
-        if result.practice_item.associated_skills
-        else None
-    )
+    skill_id = result.practice_item.associated_skills[0] if result.practice_item.associated_skills else None
 
     expected_correct = None
     if skill_id in expected_correct_skills:

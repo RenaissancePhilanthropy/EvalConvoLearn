@@ -2,6 +2,7 @@ import csv
 import json
 import random
 from pathlib import Path
+from typing import Self
 
 from pydantic import BaseModel, model_validator
 
@@ -14,16 +15,12 @@ class PracticeItem(BaseModel):
     """
 
     text: str  # unique text description of the practice item
-    associated_skills: list[str] = (
-        []
-    )  # list of associated skill IDs that this item teaches or assesses
+    associated_skills: list[str] = []  # list of associated skill IDs that this item teaches or assesses
     answer: str = ""  # unique text description of the problem's answer
-    incorrect_answers: list[str] = (
-        []
-    )  # list of incorrect answer choices for multiple choice
+    incorrect_answers: list[str] = []  # list of incorrect answer choices for multiple choice
 
     @model_validator(mode="after")
-    def validate_unique_associated_skills(self):
+    def validate_unique_associated_skills(self) -> Self:
         if len(self.associated_skills) != len(set(self.associated_skills)):
             # find a duplicate associated skill to inform the error
             for sid in self.associated_skills:
@@ -33,13 +30,13 @@ class PracticeItem(BaseModel):
                     )
         return self
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         # two practice items are equal if they have the same text
         if not isinstance(other, PracticeItem):
             return NotImplemented
         return self.text == other.text
 
-    def add_associated_skill(self, skill_id: str):
+    def add_associated_skill(self, skill_id: str) -> None:
         if skill_id in self.associated_skills:
             raise ValueError(
                 f"Associated skill with id {skill_id} already exists for PracticeItem {self.id}.",
@@ -116,8 +113,7 @@ class PracticeItemPool(BaseModel):
     def __len__(self) -> int:
         return len(self.items)
 
-    @model_validator(mode="after")
-    def validate_unique_items_and_associated_skills(self):
+    def _check_unique_items_and_associated_skills(self) -> None:
         item_texts = [item.text for item in self.items]
         if len(item_texts) != len(set(item_texts)):
             # find a duplicate item to inform the error
@@ -134,10 +130,14 @@ class PracticeItemPool(BaseModel):
                     raise ValueError(
                         f"Associated skill ID {sid} in PracticeItem '{item.text}' not found in SkillSpace.",
                     )
+
+    @model_validator(mode="after")
+    def validate_unique_items_and_associated_skills(self) -> Self:
+        self._check_unique_items_and_associated_skills()
         return self
 
     # add a new practice item to the pool
-    def add_item(self, item: PracticeItem):
+    def add_item(self, item: PracticeItem) -> None:
         if item in self.items:
             raise ValueError(
                 f"PracticeItem with text '{item.text}' already exists in PracticeItemPool.",
@@ -163,7 +163,7 @@ class PracticeItemPool(BaseModel):
         return item
 
     # delete a practice item from the pool
-    def remove_item(self, item_object: str | PracticeItem):
+    def remove_item(self, item_object: str | PracticeItem) -> None:
         item = self._validate_item_object(item_object)
         self.items.remove(item)
 
@@ -243,7 +243,7 @@ class PracticeItemPool(BaseModel):
 
         return list(all_prerequisite_skills)
 
-    def load_items_from_json(self, file_path: str):
+    def load_items_from_json(self, file_path: str) -> None:
         """Load practice items from a JSON with format:
         [{
             "problem": "text of the practice item",
@@ -270,9 +270,9 @@ class PracticeItemPool(BaseModel):
             )
             self.add_item(item)
 
-        self.validate_unique_items_and_associated_skills()
+        self._check_unique_items_and_associated_skills()
 
-    def load_items_from_csv(self, file_path: str | Path):
+    def load_items_from_csv(self, file_path: str | Path) -> None:
         """Load practice items from a CSV with format:
         problem,answer,incorrect_answer_1,incorrect_answer_2,incorrect_answer_3,skill_id
         "text of the practice item","correct answer","wrong1","wrong2","wrong3","skill_id_1, skill_id_2"
@@ -306,7 +306,7 @@ class PracticeItemPool(BaseModel):
                 )
                 self.add_item(item)
 
-        self.validate_unique_items_and_associated_skills()
+        self._check_unique_items_and_associated_skills()
 
     def get_items_for_skill_scenario(
         self,
@@ -343,10 +343,7 @@ class PracticeItemPool(BaseModel):
         if retrieve_all_learner_skill_prerequisites:
             all_prereq: set[str] = set(mastered_ids)
             for mid in mastered_ids:
-                all_prereq.update(
-                    getattr(s, "id", s)
-                    for s in self.skill_space.get_all_prerequisites(mid)
-                )
+                all_prereq.update(s.id for s in self.skill_space.get_all_prerequisites(mid))
         else:
             all_prereq = set(mastered_ids)
 
@@ -377,10 +374,7 @@ class PracticeItemPool(BaseModel):
                 if item_direct_prerequisites.issubset(all_prereq):
                     out.append(item)
 
-        if (
-            not item_prerequisites_should_be_mastered
-            and select_items_near_mastery_boundary_first
-        ):
+        if not item_prerequisites_should_be_mastered and select_items_near_mastery_boundary_first:
             return sorted(out, key=_boundary_distance)[:max_items]
 
         random.shuffle(out)

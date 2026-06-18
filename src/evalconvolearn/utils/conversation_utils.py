@@ -60,9 +60,7 @@ def run_conversation_to_completion(
 
         metrics["messages"].append({"role": "user", "content": full_response})
         turn_count += 1
-        conversation_ended = conversation_ended or (
-            "Conversation ended" in full_response
-        )
+        conversation_ended = conversation_ended or ("Conversation ended" in full_response)
 
     if turn_count < max_turns:
         metrics["solution_found"] = True

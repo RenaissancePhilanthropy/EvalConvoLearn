@@ -29,11 +29,9 @@ dev = [
     "pytest",
     "pytest-cov",
     "pytest-asyncio",
-    "black",
     "ruff",
-    "isort",
     "pre-commit",
-    "mypy",
+    "pyright",
 ]
 docs = []
 
@@ -56,28 +54,27 @@ line-length = 120
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["ALL"]
+ignore = ["ANN401", "ANN101", "E501"]
+select = [
+  "F",
+  "E",
+  "I",
+  "ANN",
+]
 
 [tool.ruff.format]
 quote-style = "double"
 
-# Disable some overly strict rules
-#ignore = [
-#    "E501",  # Line too long (let black handle this)
-#    "E203",  # Whitespace before ':'
-#    "E731",  # Do not assign a lambda expression, use a def
-#]
-
-# Allow longer lines in specific contexts
-#[lint.per-file-ignores]
-#"__init__.py" = ["F401"]  # Unused imports in __init__.py
-#"tests/**/*" = ["E501"]   # Allow long lines in tests
-
-# [tool.mypy]
-# python_version = "3.10"
-# warn_return_any = true
-# warn_unused_configs = true
-# disallow_untyped_defs = true
+[tool.pyright]
+pythonVersion = "3.11"
+pythonPlatform = "All"
+typeCheckingMode = "standard"
+include = ["src"]
+exclude = ["tests"]
+venvPath = "."
+venv = ".venv"
+reportGeneralTypeIssues = false
+reportAttributeAccessIssue = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -102,8 +99,3 @@ asyncio_mode = "auto"
 dev = [
     "pytest>=9.0.2",
 ]
-# addopts = "--cov=src/dialogue_learner --cov-report=html --cov-report=term-missing"
-#filter_warnings = [
-#    "ignore::DeprecationWarning",
-#    "ignore::UserWarning",
-#]

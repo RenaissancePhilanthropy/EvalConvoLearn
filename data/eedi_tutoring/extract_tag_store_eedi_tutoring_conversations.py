@@ -164,10 +164,7 @@ def _parse_args() -> argparse.Namespace:
         "--sample-size",
         type=int,
         default=100,
-        help=(
-            "Maximum number of eligible dialogues to sample before skill filtering "
-            "(default: 100)."
-        ),
+        help=("Maximum number of eligible dialogues to sample before skill filtering (default: 100)."),
     )
     parser.add_argument(
         "--seed",
@@ -199,10 +196,7 @@ def _parse_args() -> argparse.Namespace:
         "--min-tagged-conversations-per-tutor",
         type=int,
         default=5,
-        help=(
-            "Minimum number of tagged conversations a tutor must retain in the final "
-            "output set (default: 5)."
-        ),
+        help=("Minimum number of tagged conversations a tutor must retain in the final output set (default: 5)."),
     )
     parser.add_argument(
         "--max-retries",
@@ -220,7 +214,7 @@ def _parse_args() -> argparse.Namespace:
         "--log-level",
         default=DEFAULT_LOG_LEVEL,
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help=("Console log verbosity " f"(default: {DEFAULT_LOG_LEVEL})."),
+        help=(f"Console log verbosity (default: {DEFAULT_LOG_LEVEL})."),
     )
     return parser.parse_args()
 
@@ -333,10 +327,7 @@ def load_eedi_frames() -> tuple[pd.DataFrame, pd.DataFrame]:
     try:
         from datasets import load_dataset
     except ImportError as exc:  # pragma: no cover - import guard
-        msg = (
-            "The `datasets` package is required. Install project dependencies or "
-            "`pip install datasets`."
-        )
+        msg = "The `datasets` package is required. Install project dependencies or `pip install datasets`."
         raise ImportError(msg) from exc
 
     logger.info(
@@ -380,8 +371,7 @@ def _coerce_is_tutor(value: Any) -> bool:
 
 def _format_dialogue_history(messages: list[dict[str, str]]) -> str:
     return "\n".join(
-        f"<<<{index}. {message['speaker']}: {message['content']}>>>"
-        for index, message in enumerate(messages)
+        f"<<<{index}. {message['speaker']}: {message['content']}>>>" for index, message in enumerate(messages)
     )
 
 
@@ -599,9 +589,7 @@ def select_sampled_dialogues(
         )
         base_selection = tutor_dialogues[: sampling_config.min_conversations_per_tutor]
         sampled_dialogues.extend(base_selection)
-        remaining_dialogues_by_tutor[tutor_id] = tutor_dialogues[
-            sampling_config.min_conversations_per_tutor :
-        ]
+        remaining_dialogues_by_tutor[tutor_id] = tutor_dialogues[sampling_config.min_conversations_per_tutor :]
         remaining_budget -= len(base_selection)
 
     tutor_cycle = sampled_tutor_ids.copy()
@@ -613,9 +601,7 @@ def select_sampled_dialogues(
             sampled_dialogues.append(remaining_for_tutor.pop(0))
             remaining_budget -= 1
         else:
-            tutor_cycle = [
-                item for item in tutor_cycle if remaining_dialogues_by_tutor[item]
-            ]
+            tutor_cycle = [item for item in tutor_cycle if remaining_dialogues_by_tutor[item]]
             cycle_index = 0
             continue
         cycle_index += 1
@@ -637,20 +623,12 @@ def filter_tagged_records_by_tutor_count(
 ) -> list[dict[str, Any]]:
     """Keep only tagged records from tutors with enough tagged conversations."""
     counts_by_tutor = collections.Counter(
-        _normalize_text(record.get("tutor_id"))
-        for record in records
-        if _normalize_text(record.get("tutor_id"))
+        _normalize_text(record.get("tutor_id")) for record in records if _normalize_text(record.get("tutor_id"))
     )
     kept_tutors = {
-        tutor_id
-        for tutor_id, count in counts_by_tutor.items()
-        if count >= min_tagged_conversations_per_tutor
+        tutor_id for tutor_id, count in counts_by_tutor.items() if count >= min_tagged_conversations_per_tutor
     }
-    filtered_records = [
-        record
-        for record in records
-        if _normalize_text(record.get("tutor_id")) in kept_tutors
-    ]
+    filtered_records = [record for record in records if _normalize_text(record.get("tutor_id")) in kept_tutors]
     logger.info(
         "Retained %d/%d tagged conversations across %d tutors after applying final tutor threshold %d",
         len(filtered_records),
@@ -723,9 +701,7 @@ def check_questions_require_external_reference_batch(
     results: dict[str, bool] = {}
     for batch_start in range(0, len(questions), batch_size):
         batch = questions[batch_start : batch_start + batch_size]
-        numbered_questions = "\n\n".join(
-            f"[{i}] {text}" for i, (_, text) in enumerate(batch)
-        )
+        numbered_questions = "\n\n".join(f"[{i}] {text}" for i, (_, text) in enumerate(batch))
         batch_label = f"external-reference-batch-{batch_start // batch_size}"
         logger.debug(
             "[%s] Checking %d question(s) for external references",
@@ -753,8 +729,7 @@ def check_questions_require_external_reference_batch(
                 {
                     "role": "user",
                     "content": (
-                        f"Questions:\n{numbered_questions}\n\n"
-                        "Return a verdict for every question index listed above."
+                        f"Questions:\n{numbered_questions}\n\nReturn a verdict for every question index listed above."
                     ),
                 },
             ],
@@ -992,14 +967,9 @@ def main() -> int:
     )
 
     external_ref_discarded = sum(1 for v in external_ref_flags.values() if v)
-    sampled_dialogues = [
-        d
-        for d in sampled_dialogues
-        if not external_ref_flags.get(d["question_id_dq"], False)
-    ]
+    sampled_dialogues = [d for d in sampled_dialogues if not external_ref_flags.get(d["question_id_dq"], False)]
     logger.info(
-        "Discarded %d dialogues whose question requires an external reference; "
-        "%d remain",
+        "Discarded %d dialogues whose question requires an external reference; %d remain",
         external_ref_discarded,
         len(sampled_dialogues),
     )

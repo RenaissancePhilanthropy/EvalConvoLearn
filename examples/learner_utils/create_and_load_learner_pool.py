@@ -3,14 +3,24 @@
 from pathlib import Path
 
 from evalconvolearn import EvalConvoLearn
+from evalconvolearn.models.binary_skills_flexlearner import BinarySkillsFlexLearner, StudentPool
+from evalconvolearn.models.practice_item import PracticeItem
 from evalconvolearn.models.tutor import Tutor
+from evalconvolearn.services.session_service import ConversationSession
 
 
-def run_session(sdk, pool, learner, item, tutor, session_id):
+def run_session(
+    sdk: EvalConvoLearn,
+    pool: StudentPool,
+    learner: BinarySkillsFlexLearner,
+    item: PracticeItem,
+    tutor: Tutor,
+    session_id: str,
+) -> ConversationSession:
     """Helper function to run a single conversation session."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"SESSION: {session_id}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Practice Item: {item.text}")
 
     session = sdk.create_session(pool, learner, session_id=session_id)
@@ -25,7 +35,7 @@ def run_session(sdk, pool, learner, item, tutor, session_id):
     return session
 
 
-def main():
+def main() -> None:
     # Initialize SDK
     sdk = EvalConvoLearn()
 
@@ -83,7 +93,7 @@ def main():
     print("RUNNING MULTIPLE SESSIONS")
     print("=" * 60)
 
-    session1 = run_session(
+    run_session(
         sdk,
         pool,
         learner1,
@@ -94,24 +104,24 @@ def main():
     # session2 = run_session(sdk, pool, learner2, items.items[1], tutor, "session_bob_1")
     # session3 = run_session(sdk, pool, learner1, items.items[2], tutor, "session_alice_2")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("POOL STATE AFTER SESSIONS")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Total learners in pool: {len(pool.learners)}")
     print("Sessions run: 1")
     print(f"Pool saved at: {pool.directory_file}")
 
     # Now demonstrate loading the pool back
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("LOADING EXISTING POOL")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # Load the most recent pool with this ID
     loaded_pool = sdk.load_student_pool_most_recent("demo_pool", skill_space)
     print(f"Loaded pool: {loaded_pool.id}")
     print(f"Loaded from: {loaded_pool.directory_file}")
     print(f"Number of learners: {len(loaded_pool.learners)}")
-    print(f"Learner IDs: {[l.id for l in loaded_pool.learners]}")
+    print(f"Learner IDs: {[learner.id for learner in loaded_pool.learners]}")
 
     # Access learners from loaded pool
     loaded_learner = loaded_pool.get_learner("student_alice")
@@ -119,11 +129,11 @@ def main():
     print(f"Mastered skills: {len(loaded_learner.mastered_skills)}")
 
     # Run another session with the loaded pool
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("RUNNING SESSION WITH LOADED POOL")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
-    session4 = run_session(
+    run_session(
         sdk,
         loaded_pool,
         loaded_learner,
@@ -132,9 +142,9 @@ def main():
         "session_alice_3",
     )
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("DEMONSTRATION COMPLETE")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Pool ID: {loaded_pool.id}")
     print("Total sessions run: 4")
     print(f"All data saved to: {loaded_pool.directory_file}")

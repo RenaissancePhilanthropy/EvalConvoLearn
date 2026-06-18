@@ -8,6 +8,8 @@ import pytest
 from evalconvolearn.benchmarks.flexlearners.multi_conversations_practice_benchmark import (
     MultiConversationsPracticeBenchmark,
 )
+from evalconvolearn.models.practice_item import PracticeItemPool
+from evalconvolearn.models.skill import SkillSpace
 
 
 @pytest.mark.benchmark()
@@ -16,11 +18,11 @@ class TestMultiConversationsBenchmark:
 
     def test_benchmark_initializes(
         self,
-        skill_space,
-        practice_item_pool,
-        placement_test_skill_levels,
-        tmp_path,
-    ):
+        skill_space: SkillSpace,
+        practice_item_pool: PracticeItemPool,
+        placement_test_skill_levels: dict,
+        tmp_path: Path,
+    ) -> None:
         benchmark = MultiConversationsPracticeBenchmark(
             skill_space=skill_space,
             practice_item_pool=practice_item_pool,
@@ -36,10 +38,10 @@ class TestMultiConversationsBenchmark:
 
     def test_benchmark_runs_one_skill(
         self,
-        skill_space,
-        practice_item_pool,
-        tmp_path,
-    ):
+        skill_space: SkillSpace,
+        practice_item_pool: PracticeItemPool,
+        tmp_path: Path,
+    ) -> None:
         benchmark = MultiConversationsPracticeBenchmark(
             skill_space=skill_space,
             practice_item_pool=practice_item_pool,

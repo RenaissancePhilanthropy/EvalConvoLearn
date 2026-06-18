@@ -33,6 +33,7 @@ from dotenv import load_dotenv
 from simulation_utils import generate_learning_sequence_summary
 
 from evalconvolearn import EvalConvoLearn
+from evalconvolearn.models.skill import SkillSpace
 from evalconvolearn.models.tutor import Tutor
 
 load_dotenv()
@@ -56,9 +57,7 @@ SKILL_SPACE_CSV = Path(
         REPO_ROOT / "data" / "florida-doe" / "skill-space.csv",
     ),
 )
-PRACTICE_ITEMS_CSV = (
-    REPO_ROOT / "data" / "florida-doe" / "tagged-practice-items-with-responses.csv"
-)
+PRACTICE_ITEMS_CSV = REPO_ROOT / "data" / "florida-doe" / "tagged-practice-items-with-responses.csv"
 
 
 # ---------------------------------------------------------------------------
@@ -110,7 +109,7 @@ def sample_learner_misconceptions(
 
 def build_initial_skill_set(
     sampled_skill_ids: list[str],
-    skill_space,
+    skill_space: SkillSpace,
 ) -> list[str]:
     """Return deduplicated list of skill IDs including all prerequisites.
 

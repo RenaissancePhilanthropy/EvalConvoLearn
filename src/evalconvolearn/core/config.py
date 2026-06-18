@@ -1,8 +1,9 @@
 """Configuration for EvalConvoLearn SDK."""
 
 from pathlib import Path
+from typing import Any
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -11,7 +12,7 @@ class EvalConvoLearnConfig(BaseSettings):
 
     # Data directories
     data_dir: Path = Field(default=Path("./data"))
-    student_pools_dir: Path | None = None
+    student_pools_dir: Path = Field(default=Path("./data/student_pools"))
 
     # Dataset paths (loaded from env vars)
     skill_space_path: Path | None = Field(default=None)
@@ -25,8 +26,10 @@ class EvalConvoLearnConfig(BaseSettings):
     # evaluation settings
     evaluations_dir: str = Field(default="./outputs/")
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # Set defaults based on data_dir
-        if self.student_pools_dir is None:
-            self.student_pools_dir = self.data_dir / "student_pools"
+    @model_validator(mode="before")
+    @classmethod
+    def set_student_pools_dir_default(cls, data: Any) -> Any:
+        if isinstance(data, dict) and data.get("student_pools_dir") is None:
+            data_dir = data.get("data_dir", Path("./data"))
+            data["student_pools_dir"] = Path(data_dir) / "student_pools"
+        return data

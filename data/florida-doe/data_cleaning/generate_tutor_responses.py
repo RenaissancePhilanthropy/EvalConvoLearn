@@ -122,9 +122,7 @@ def _generate_response(
         system_message = "You are a highly effective 6th-grade math tutor who creates comprehensive teaching responses."
     else:
         prompt = _build_unhelpful_response_prompt(problem, skill_id, prerequisites)
-        system_message = (
-            "You are simulating a poor tutor who gives vague, unhelpful responses."
-        )
+        system_message = "You are simulating a poor tutor who gives vague, unhelpful responses."
 
     last_error: Exception | None = None
 
@@ -171,8 +169,7 @@ def _generate_response(
             except (json.JSONDecodeError, ValueError) as json_err:
                 # If JSON parsing fails, return raw response
                 print(
-                    f"Warning: JSON parsing failed (attempt {attempt}): {json_err}. "
-                    f"Using raw response.",
+                    f"Warning: JSON parsing failed (attempt {attempt}): {json_err}. Using raw response.",
                     file=sys.stderr,
                 )
                 return response_text
@@ -194,8 +191,7 @@ def _generate_response(
             time.sleep(sleep_seconds)
 
     print(
-        f"Error: failed to generate {response_type} response after {max_retries} attempts. "
-        f"Last error: {last_error}",
+        f"Error: failed to generate {response_type} response after {max_retries} attempts. Last error: {last_error}",
         file=sys.stderr,
     )
     return ""

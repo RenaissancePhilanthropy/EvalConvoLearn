@@ -37,7 +37,7 @@ class BaseTutorStrategy(abc.ABC):
     def generate_strategy_response(
         self,
         dialogue_history: list[dict],
-        **kwargs,
+        **kwargs: Any,
     ) -> TutorResponse:
         """Generate tutor's response based on conversation state."""
 
@@ -67,15 +67,13 @@ class LLMTutorStrategy(BaseTutorStrategy):
         tutor_characteristics: dict[str, Any] = {},
         system_prompt_template: str | None = None,
         include_answer_in_context: bool = False,
-        **llm_kwargs,
-    ):
+        **llm_kwargs: Any,
+    ) -> None:
         self.model = model
         self.tutor_characteristics = tutor_characteristics
         self.llm_kwargs = llm_kwargs
         self.include_answer_in_context = include_answer_in_context
-        self.system_prompt_template = (
-            system_prompt_template or self._default_system_prompt()
-        )
+        self.system_prompt_template = system_prompt_template or self._default_system_prompt()
 
     def _default_system_prompt(self) -> str:
         return (
@@ -93,7 +91,7 @@ class LLMTutorStrategy(BaseTutorStrategy):
     def generate_strategy_response(
         self,
         dialogue_history: list[dict],
-        **kwargs,
+        **kwargs: Any,
     ) -> TutorResponse:
         """Generate response using LLM."""
         if not self.client:
@@ -146,8 +144,7 @@ class LLMTutorStrategy(BaseTutorStrategy):
                 else:
                     formatted_dialogue = str(dialogue)
                 blocks.append(
-                    f"### Practice item: {item_text}\n"
-                    f"### Dialogue:\n{formatted_dialogue}",
+                    f"### Practice item: {item_text}\n### Dialogue:\n{formatted_dialogue}",
                 )
             few_shot_block = (
                 "\n\nBelow are examples of your past tutoring conversations to help ground your response style. "
@@ -164,7 +161,7 @@ class LLMTutorStrategy(BaseTutorStrategy):
         )
 
         # Build messages from dialogue history
-        messages = [
+        messages: list[Any] = [
             {
                 "role": "system",
                 "content": system_content,
@@ -191,8 +188,7 @@ class LLMTutorStrategy(BaseTutorStrategy):
         if message_content is None:
             refusal = getattr(choice, "refusal", None)
             raise ValueError(
-                "LLM returned None content for tutor response"
-                + (f" (refusal: {refusal})" if refusal else ""),
+                "LLM returned None content for tutor response" + (f" (refusal: {refusal})" if refusal else ""),
             )
         return TutorResponse(
             message=message_content,
@@ -200,14 +196,10 @@ class LLMTutorStrategy(BaseTutorStrategy):
                 "model": self.model,
                 "tokens_used": response.usage.total_tokens if response.usage else 0,
                 "should_conversation_end": (
-                    parsed.should_conversation_end
-                    if parsed and hasattr(parsed, "should_conversation_end")
-                    else False
+                    parsed.should_conversation_end if parsed and hasattr(parsed, "should_conversation_end") else False
                 ),
                 "should_end_reasoning": (
-                    parsed.should_end_reasoning
-                    if parsed and hasattr(parsed, "should_end_reasoning")
-                    else ""
+                    parsed.should_end_reasoning if parsed and hasattr(parsed, "should_end_reasoning") else ""
                 ),
             },
         )
@@ -240,7 +232,7 @@ class LLMTutorStrategy(BaseTutorStrategy):
 class HumanInterfaceTutorStrategy(BaseTutorStrategy):
     """Tutor strategy for human interface. For now, only returns the provided human message."""
 
-    def __init__(self, include_answer_in_context: bool = False, **strategy_kwargs):
+    def __init__(self, include_answer_in_context: bool = False, **strategy_kwargs: Any) -> None:
         self.include_answer_in_context = include_answer_in_context
         self.strategy_kwargs = strategy_kwargs
 
@@ -250,7 +242,7 @@ class HumanInterfaceTutorStrategy(BaseTutorStrategy):
     def generate_strategy_response(
         self,
         dialogue_history: list[dict],
-        **kwargs,
+        **kwargs: Any,
     ) -> TutorResponse:
         """Generate response for human interface - just return last message."""
         return TutorResponse(
@@ -264,9 +256,7 @@ class HumanInterfaceTutorStrategy(BaseTutorStrategy):
         learner_context: dict | None = None,
     ) -> TutorResponse:
         """Start conversation with practice item for human interface."""
-        message = (
-            f"Let's work together on the following math problem: {practice_item.text}"
-        )
+        message = f"Let's work together on the following math problem: {practice_item.text}"
 
         metadata = {}
         if self.include_answer_in_context:
@@ -299,34 +289,27 @@ class Tutor(BaseModel, BaseTutor):
     tutor_characteristics: dict = Field(
         default_factory=dict,
     )  # characteristics of the tutor (e.g., helpfulness level, style)
-    practice_item_pool: PracticeItemPool | None = (
-        None  # practice item pool used by the tutor
-    )
+    practice_item_pool: PracticeItemPool | None = None  # practice item pool used by the tutor
     response_interaction_mode: Literal[
         "http",
         "return_only",
     ] = "return_only"  # reserved: only 'return_only' is implemented
-    include_answer_in_context: bool = (
-        False  # whether to include the practice item answer in tutor context/metadata
-    )
+    include_answer_in_context: bool = False  # whether to include the practice item answer in tutor context/metadata
     # This is a private attribute, not part of the model schema (model_dump)
-    _strategy: BaseTutorStrategy | None = (
-        None  # internal strategy instance derived from tutor_type
-    )
+    _strategy: BaseTutorStrategy | None = None  # internal strategy instance derived from tutor_type
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         """Initialize Tutor."""
         super().__init__(**data)
         if self.response_interaction_mode == "http":
             msg = (
-                "HTTP interaction mode is not implemented in this version. "
-                "Use response_interaction_mode='return_only'."
+                "HTTP interaction mode is not implemented in this version. Use response_interaction_mode='return_only'."
             )
             raise NotImplementedError(msg)
         self._strategy = None
         self.initialize_tutor_characteristics()
 
-    def initialize_tutor_characteristics(self):
+    def initialize_tutor_characteristics(self) -> None:
         """Initialize tutor characteristics with defaults if not provided."""
         defaults = {
             "helpfulness": True,
@@ -336,7 +319,7 @@ class Tutor(BaseModel, BaseTutor):
             self.tutor_characteristics.setdefault(key, value)
 
     # tutor loading information
-    def load_practice_item_pool(self, item_pool: PracticeItemPool):
+    def load_practice_item_pool(self, item_pool: PracticeItemPool) -> None:
         """Load a practice item pool for the tutor to use."""
         # extra validation as needed
         self.practice_item_pool = item_pool
@@ -344,8 +327,8 @@ class Tutor(BaseModel, BaseTutor):
     def initialize_strategy(
         self,
         model: str = "gpt-4.1-mini",
-        **strategy_kwargs: object,
-    ):
+        **strategy_kwargs: Any,
+    ) -> None:
         """Initialize strategy based on tutor_type, an async operation because can be an external API call."""
         if self.tutor_type == "llm":
             self._strategy = LLMTutorStrategy(
@@ -385,9 +368,7 @@ class Tutor(BaseModel, BaseTutor):
                     "No practice item provided and no practice item pool loaded.",
                 )
             # practice item pool length > 0
-            practice_item = self.practice_item_pool.items[
-                0
-            ]  # for now, just take the first item
+            practice_item = self.practice_item_pool.items[0]  # for now, just take the first item
         # Initial conversation with empty dialogue history
         return await self._strategy.start_conversation_with_practice_item(
             practice_item=practice_item,
@@ -397,7 +378,7 @@ class Tutor(BaseModel, BaseTutor):
     def get_teacher_followup_message(
         self,
         dialogue_history: list[dict] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> TutorResponse:
         """Get the follow up message from the tutor."""
         if not self._strategy:
@@ -416,7 +397,7 @@ class Tutor(BaseModel, BaseTutor):
     def generate_response(
         self,
         dialogue_history: list[dict],
-        **kwargs,
+        **kwargs: Any,
     ) -> TutorResponse:
         """Generate a tutor response based on dialogue history."""
         if self.tutor_type == "human_interface":

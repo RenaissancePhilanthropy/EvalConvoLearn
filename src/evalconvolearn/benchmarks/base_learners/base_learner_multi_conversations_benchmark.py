@@ -43,7 +43,7 @@ class BaselineMultiConversationsBenchmark:
         output_dir: Path | None = None,
         benchmark_extra_args: dict | None = None,
         practice_conversations_file: Path | str | None = None,
-    ):
+    ) -> None:
         self.skill_space = skill_space
         self.practice_item_pool = practice_item_pool
         self.learner_config = learner_config
@@ -171,9 +171,7 @@ class BaselineMultiConversationsBenchmark:
 
             # create the list of items by randomly choosing items in items WITH replacement:
             # potentially working on similar items multiple times if not enough items variety
-            items = [
-                random.choice(items) for _ in range(self.max_climb_items_per_skill)
-            ]
+            items = [random.choice(items) for _ in range(self.max_climb_items_per_skill)]
 
             skill_mastered = False
             for attempt_idx, item in enumerate(items):
@@ -274,14 +272,10 @@ class BaselineMultiConversationsBenchmark:
 
         total_consolidation_runs = len(consolidation_records)
         consolidation_solution_rate = (
-            consolidation_solutions_found / total_consolidation_runs
-            if total_consolidation_runs
-            else 0.0
+            consolidation_solutions_found / total_consolidation_runs if total_consolidation_runs else 0.0
         )
         avg_turns_per_skill = (
-            total_climb_turns / total_skills_learned_in_climb
-            if total_skills_learned_in_climb > 0
-            else 0.0
+            total_climb_turns / total_skills_learned_in_climb if total_skills_learned_in_climb > 0 else 0.0
         )
 
         return {
@@ -334,8 +328,7 @@ class BaselineMultiConversationsBenchmark:
                             mastered_skill_ids=root_skill_ids,
                             learner_id=learner_id,
                             practice_conversations_file=(
-                                self.practice_conversations_file
-                                or output_dir / f"{learner_id}_conversations.jsonl"
+                                self.practice_conversations_file or output_dir / f"{learner_id}_conversations.jsonl"
                             ),
                             practice_item_pool=self.practice_item_pool,
                             tutor=self.tutor,
@@ -380,33 +373,19 @@ class BaselineMultiConversationsBenchmark:
                         ),
                     )
 
-        total_skills_learned = sum(
-            result["total_skills_learned_in_climb"] for result in all_results
-        )
+        total_skills_learned = sum(result["total_skills_learned_in_climb"] for result in all_results)
         total_turns = sum(result["total_climb_turns"] for result in all_results)
-        overall_avg_turns_per_skill = (
-            total_turns / total_skills_learned if total_skills_learned > 0 else 0.0
-        )
-        total_consol_runs = sum(
-            result["consolidation_runs_completed"] for result in all_results
-        )
-        total_consol_solutions = sum(
-            result["consolidation_solutions_found"] for result in all_results
-        )
+        overall_avg_turns_per_skill = total_turns / total_skills_learned if total_skills_learned > 0 else 0.0
+        total_consol_runs = sum(result["consolidation_runs_completed"] for result in all_results)
+        total_consol_solutions = sum(result["consolidation_solutions_found"] for result in all_results)
         aggregate_metrics = {
             "overall_avg_turns_per_skill": overall_avg_turns_per_skill,
             "overall_consolidation_solution_rate": (
-                total_consol_solutions / total_consol_runs
-                if total_consol_runs > 0
-                else 0.0
+                total_consol_solutions / total_consol_runs if total_consol_runs > 0 else 0.0
             ),
             "total_targets": len(all_results),
-            "targets_mastered": sum(
-                1 for result in all_results if result["target_mastered"]
-            ),
-            "total_climb_conversations": sum(
-                result["total_climb_conversations"] for result in all_results
-            ),
+            "targets_mastered": sum(1 for result in all_results if result["target_mastered"]),
+            "total_climb_conversations": sum(result["total_climb_conversations"] for result in all_results),
             "total_climb_turns": total_turns,
             "total_skills_learned": total_skills_learned,
             "total_consolidation_runs": total_consol_runs,
@@ -418,9 +397,7 @@ class BaselineMultiConversationsBenchmark:
             "timestamp": datetime.now().isoformat(),
             "config": {
                 "runs": self.runs,
-                "skill_levels": {
-                    key: list(value) for key, value in self.skill_levels.items()
-                },
+                "skill_levels": {key: list(value) for key, value in self.skill_levels.items()},
                 "consolidation_runs": self.consolidation_runs,
                 "max_conversation_turns": self.max_conversation_turns,
                 "max_climb_items_per_skill": self.max_climb_items_per_skill,
