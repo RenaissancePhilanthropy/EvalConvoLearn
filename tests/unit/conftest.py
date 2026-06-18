@@ -1,4 +1,5 @@
 import uuid
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -14,10 +15,11 @@ def conversation(
 ) -> ConversationGraph:
     """A ConversationGraph for unit testing using the first practice item in the pool."""
     practice_item = practice_item_pool.items[0]
-    return ConversationGraph(
-        id=str(uuid.uuid4()),
-        practice_item=practice_item,
-        skill_space=skill_space,
-        learner=learner,
-        resolve_confusion_style="",
-    )
+    with patch("evalconvolearn.models.flexlearner_conversation.OpenAI", return_value=MagicMock()):
+        return ConversationGraph(
+            id=str(uuid.uuid4()),
+            practice_item=practice_item,
+            skill_space=skill_space,
+            learner=learner,
+            resolve_confusion_style="",
+        )
