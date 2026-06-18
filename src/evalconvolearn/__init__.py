@@ -1,5 +1,7 @@
 """evalconvolearn: Learner simulation framework for evaluating conversational AI tutors."""
 
+from importlib.metadata import version
+
 from .core.base_learner import BaseLearner
 from .core.base_tutor import BaseTutor, load_effective_conversations
 from .core.config import EvalConvoLearnConfig
@@ -15,7 +17,7 @@ from .models.evaluation import EvaluationConfig, LearnerEvalConfig
 from .models.practice_item import PracticeItem, PracticeItemPool
 from .models.skill import Skill, SkillSpace
 
-__version__ = "0.1.0"
+__version__ = version("evalconvolearn")
 
 __all__ = [
     "BaseLearner",

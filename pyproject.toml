@@ -1,6 +1,6 @@
 [project]
 name = "evalconvolearn"
-version = "0.1.0"
+version = "0.1.1"
 description = "An open-source framework to evaluate learner simulations."
 readme = "README.md"
 license = { file = "LICENSE" }
