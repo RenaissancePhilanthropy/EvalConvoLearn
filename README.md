@@ -2,24 +2,15 @@
 
 An open-source evaluation library to assess the quality of learner simulations in conversational tutoring systems.
 
-A learner simulation is any custom code that can respond to tutor questions during problem-solving tutoring sessions. It may be a simple LLM-based response, a more complex learner implementation using knowledge retrieval to control learning, or a middleware to an externally hosted software. The simulation should subclass our existing `BaseLearner` class (see below).
+A learner simulation is any custom code that can respond to tutor questions during problem-solving tutoring sessions. To be evaluated, it should subclass the `BaseLearner` class (see below).
 
-EvalConvoLearn provides standardized benchmarks to measure whether a learner simulation behaves as expected: responding accurately from a given prior knowledge, demonstrating skill acquisition after tutoring, or progressing coherently across multiple sessions.
+EvalConvoLearn evaluates the realism of learner simulations by comparing their responses to real student responses extracted from real tutoring conversations datasets.
 
-More importantly, it can evaluate the realism of learner simulations by comparing their responses to real student responses extracted from real tutoring conversations datasets.
-
-**Four benchmark families:**
-
-| Benchmark | What it measures |
-|---|---|
-| Placement Test | Does the learner answer problems correctly given its initial skill level? |
-| Learning from Conversation | Does the learner demonstrate skill gains after a tutored exchange? |
-| Multi-Conversation Practice | Does the learner progress coherently across multiple sessions? |
-| Dataset-Fitted | Does the learner's conversation behavior match real tutoring data? |
+It also provides standardized scenario-based evaluations to measure whether a learner simulation behaves as expected: responding appropriately to reflect some prior knowledge, demonstrating skill acquisition from tutoring, or progressing coherently across multiple sessions.
 
 ## Citation
 
-This library accompanies the Evaluating Learner Simulations with EvalConvoLearn paper (To be added) being presented at the [IRAISE](https://safeinsights.github.io/iraise26/) workshop:
+This library accompanies the [Evaluating Learner Simulations with EvalConvoLearn paper](Evaluating_learner_simulations_with_EvalConvoLearn.pdf) presented at the [IRAISE](https://safeinsights.github.io/iraise26/) '26 workshop at the Festival of Learning:
 
 ```
 Upcoming citation.
@@ -110,13 +101,13 @@ Each line of the JSONL file must be a JSON object with at minimum:
 | `mastered_skills_before_conversation` | `list[str]` | Skill IDs the learner had mastered before this session |
 | `mastered_skills_from_conversation` | `list[str]` | Skill IDs the learner mastered *during* this session |
 
-Optional but useful fields: `learner_id`, `tutor_id`, `correct_answer`, `item_skill_prerequisites`.
+Optional fields: `learner_id`, `tutor_id`, `correct_answer`, `item_skill_prerequisites`.
 
 **If you don't have a dataset**, you first need to prepare the skill space and practice items from the Florida DOE BEST curriculum, then run the standard benchmarks.
 
 #### Step 1 — Complete the skill space
 
-`data/florida-doe/skill-space.csv` ships with skill IDs, descriptions, and **worked example problems and misconceptions for all 15 skills**, so you can run the steps below immediately. You can extend or replace this content using the [Florida DOE BEST Mathematics curriculum](https://www.fldoe.org/academics/standards/subject-areas/math-science/mathematics/bestmath.stml) or substitute your own skill set — any CSV with `skill_id`, `skill_description`, `prerequisite_skills`, `problem_1`, `problem_2`, and `misconceptions` columns will work.
+`data/florida-doe/skill-space.csv` ships with skill IDs, descriptions, and **generated worked example problems for all 15 skills**, so you can run the steps below immediately. You can extend or replace this content using the [Florida DOE BEST Mathematics curriculum](https://www.fldoe.org/academics/standards/subject-areas/math-science/mathematics/bestmath.stml) or substitute your own skill set — any CSV with `skill_id`, `skill_description`, `prerequisite_skills`, and `problem_1...N` columns will work.
 
 #### Step 2 — Pivot into a practice-item pool
 

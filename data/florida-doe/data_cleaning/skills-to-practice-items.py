@@ -13,23 +13,18 @@ for _, row in df.iterrows():
     skill_id = row["skill_id"]
     prerequisites = row["prerequisite_skills"]
 
-    if pd.notna(row["problem_1"]):
-        pivoted_data.append(
-            {
-                "problem": str(row["problem_1"]),
-                "skill_id": skill_id,
-                "prerequisites": prerequisites,
-            },
-        )
-
-    if pd.notna(row["problem_2"]):
-        pivoted_data.append(
-            {
-                "problem": str(row["problem_2"]),
-                "skill_id": skill_id,
-                "prerequisites": prerequisites,
-            },
-        )
+    # find all problem_K columns in row:
+    problem_columns = [col for col in df.columns if col.startswith("problem_")]
+    for problem_col in problem_columns:
+        problem = row[problem_col]
+        if pd.notna(problem):
+            pivoted_data.append(
+                {
+                    "skill_id": skill_id,
+                    "prerequisite_skills": prerequisites,
+                    "problem": problem,
+                }
+            )
 
 pivoted_df = pd.DataFrame(pivoted_data)
 pivoted_df.to_csv("data/florida-doe/tagged-practice-items.csv", index=False)
